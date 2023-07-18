@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Microsoft YaHei', 'Helvetica Neue', Helvetica, STHeiTi,
+    sans-serif;
+  @apply text-[1em] !leading-[1];
+}
+
+input {
+  outline: none !important;
+}

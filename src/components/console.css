@@ -1,0 +1,104 @@
+.page_up {
+    @apply hover:bg-[#ffdf1f] text-[#333]
+}
+
+.page_up i {
+    @apply text-[#333] cursor-pointer
+}
+
+.page_current {
+    @apply bg-[#ffdf1f] text-[#333]
+}
+
+.page_current span {
+    @apply text-[#333]
+}
+
+.page_item {
+    @apply hover:bg-[#ffdf1f]
+}
+
+.page_item span {
+    @apply cursor-pointer hover:text-[#333]
+}
+
+
+.page_down {
+    @apply cursor-pointer hover:bg-[#ffdf1f]
+}
+
+.page_down i {
+    @apply cursor-pointer text-[#333]
+}
+
+.loading-mask {
+    @apply absolute z-[1000] bg-[#fff] m-0 top-0 right-0 bottom-0 left-0 min-h-[100px] transition-opacity duration-300 flex justify-center
+}
+
+.load span {
+    @apply inline-block w-[4px] mx-[2px] align-middle rounded-[2px] bg-[#ffe200]
+}
+
+
+.loading-wrap .side1 {
+    animation: first-data 1s linear infinite;
+    @apply h-[6px] 
+}
+
+.loading-wrap .side2 {
+    animation: second-data 1s linear infinite;
+    @apply h-[14px] 
+} 
+
+.loading-wrap .mid { 
+    animation: mid-data 1s linear infinite;
+    @apply h-[22px] 
+}
+
+
+
+@keyframes first-data {
+    0% {
+        height: 6px;
+    }
+
+    56% {
+        height: 22px;
+    }
+
+    100% {
+        height: 6px;
+    }
+}
+
+@keyframes second-data {
+    0% {
+        height: 14px;
+    }
+
+    28% {
+        height: 22px;
+    }
+
+    80% {
+        height: 6px;
+    }
+
+    100% {
+        height: 14px;
+    }
+}
+
+@keyframes mid-data {
+    0% {
+        height: 22px;
+    }
+
+    56% {
+        height: 6px;
+    }
+
+    100% {
+        height: 22px;
+    }
+}
