@@ -1,23 +1,28 @@
-import { createMemo, createSignal, For, createResource, type ResourceReturn } from "solid-js"
+import { createMemo, createSignal, For, createResource, type ResourceReturn, createEffect } from "solid-js"
 import './search.css'
-import { useNavigate } from "solid-start";
+import { A, useNavigate } from "solid-start";
 export default function Search() {
   const navigate = useNavigate();
-  const [beFocused, setBeFocused] = createSignal(false)
+  const [loading, setLoading] = createSignal(true)
+  const [tip, setTip] = createSignal([]) as any
+  const [focus, setfocus] = createSignal(false)
+  const [tipShow, setTipShow] = createSignal(false)
   const [value, setValue] = createSignal<string>("")
-  const [searchs] = createResource(value, getSearchTip) as ResourceReturn<any>
-  const hotKey = createMemo<any>(() => beFocused() && value() && !searchs.loading && searchs().length);
+  // const [tip, { mutate }] = createResource(value, getTip) as ResourceReturn<any>
+  // const hotKey = createMemo<any>(() => focus() && value() && !tip.loading && tip().length || tipShow());
 
-  async function getSearchTip() {
-    if (!value()) return
+  async function getTip(val: string) {
+    if (!val) return
+    setLoading(true)
     const { data } = await fetch("/api/searchTip", {
       method: "POST",
       body: JSON.stringify({
-        keyword: value()
+        keyword: val
       }),
     }).then(rep => rep.json())
     return new Promise((resolve) => {
       const searchs = data.find((i: { LableName: string }) => !i.LableName)?.RecordDatas;
+      setLoading(false)
       resolve(searchs);
     });
   }
@@ -27,14 +32,42 @@ export default function Search() {
     }
   }
 
+  const enterClick = (e: MouseEvent & { currentTarget: HTMLLIElement; target: Element; }) => {
+    const href = e.currentTarget.innerText
+    setValue(href)
+    navigate(`/search/${href}`);
+    setTip([])
+    setLoading(true)
+    setTipShow(false)
+  }
 
+  const handleBlur = () => {
+    if (!tipShow()) setTip([])
+    setfocus(false)
+  }
+
+
+
+  const handleFocus = async (e: Event) => {
+    const val = (e.target as HTMLInputElement).value
+    const tip = await getTip(val)
+    setTip(tip)
+    setfocus(true)
+  }
+
+  const handleInput = async (e: Event) => {
+    const val = (e.target as HTMLInputElement).value
+    const tip = await getTip(val)
+    setTip(tip)
+  }
 
   return (
-    <div class="w-[294px] search_out absolute right-[100%] top-1/2 bg-gray-100 -translate-y-1/2 z-50  max-[1386px]:w-[33px] max-[1386px]:overflow-hidden hover:w-[294px]" classList={{ 'search_focus': beFocused() }} >
+    <div class="w-[294px] search_out absolute right-[100%] top-1/2 bg-gray-100 -translate-y-1/2 z-50  max-[1386px]:w-[33px] max-[1386px]:overflow-hidden hover:w-[294px]" classList={{ 'search_focus': focus() || tipShow() }} >
       <div>
         <div
           class="relative flex items-center pl-[8px] rounded-[2px] z-[10] bg-[#f5f5f5]"
         >
+
           <button
             class="icon-[carbon--search] text-[#999] text-[16px] min-w-[16px]"
           ></button>
@@ -44,20 +77,19 @@ export default function Search() {
             maxlength="128"
             type="text"
             placeholder="搜索音乐/MV/歌单/歌手"
-            onInput={e => setValue(e.currentTarget.value)}
-            onBlur={() => setBeFocused(false)}
-            onFocus={(e) => setBeFocused(true)}
+            value={value()}
+            onInput={(e) => handleInput(e)}
+            onBlur={(e) => handleBlur()}
+            onFocus={(e) => handleFocus(e)}
             onKeyPress={(e) => enterTap(e.key)}
           />
         </div>
 
 
-        <div class="list absolute top-[0] left-[0] bg-[#fff] pt-[18px] pb-[15px] opacity-0 z-0 shadow-[0_10px_30px_0_rgba(65,67,70,.08)] rounded-[4px] transition-[top] duration-4000 ease-in-out w-[100%]" classList={{ host: hotKey() }}>
-
-
-          <ul>
-            <For each={searchs.latest}>{(k, i) =>
-              <li class="h-[38px] leading-[38px] font-[300] bg-[#fff] px-[18px] hover:cursor-pointer hover:bg-[#f5f5f5] overflow-hidden">
+        <div class="list absolute top-[0] left-[0] bg-[#fff] pt-[18px] pb-[15px] opacity-0 z-0 shadow-[0_10px_30px_0_rgba(65,67,70,.08)] rounded-[4px] transition-[top] duration-4000 ease-in-out w-[100%]" classList={{ host: !loading() && tip()?.length }}>
+          <ul onMouseOver={() => setTipShow(true)} onMouseOut={() => setTipShow(false)}>
+            <For each={tip()}>{(k, i) =>
+              <li onclick={(e) => enterClick(e)} class="select-none iddd h-[38px] leading-[38px] font-[300] bg-[#fff] px-[18px] hover:cursor-pointer hover:bg-[#f5f5f5] overflow-hidden">
                 {k.HintInfo}
               </li>
             }</For>

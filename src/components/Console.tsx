@@ -1,11 +1,13 @@
 import { createEffect, createSignal, For, onMount, Show, createResource, Accessor, Resource, type ResourceReturn } from "solid-js"
+import { increment } from '~/stores/index'
 import './console.css'
 
 export default function Search(props: {
     slug: string
 }) {
+    const [songList, setSongList] = createSignal([]) as any
+    const [songListLoading, setSongListLoading] = createSignal(true)
     const [loading, setLoading] = createSignal<any>(true)
-
     const [pageList, setPageList] = createSignal<any>()
     const [pagination, setPagination] = createSignal({
         page: 1,
@@ -13,7 +15,7 @@ export default function Search(props: {
         total: 0,
         pages: 1,
     })
-    const [songList, { mutate }] = createResource(props.slug, getSongList) as ResourceReturn<any>
+    // const [songList, { mutate }] = createResource(props.slug, getSongList) as ResourceReturn<any>
     const getPageList = (paging: any) => {
         const { pages, page } = paging
         if (pages < 4) return new Array(pages).fill(1).map((num, index) => num + index)
@@ -43,7 +45,7 @@ export default function Search(props: {
     }
     async function getSongList() {
         setLoading(true)
-        const { data, paging } = await fetch("/api/search", {
+        const { data, paging } = await fetch("/api/searchList", {
             method: "POST",
             body: JSON.stringify({
                 keyword: props.slug,
@@ -54,14 +56,14 @@ export default function Search(props: {
         setPageList(getPageList(paging))
         return new Promise((resolve, reject) => {
             setLoading(false)
+            setSongListLoading(false)
             resolve(data);
         });
     }
     const commonReq = async (copy: any) => {
-        mutate([])
+        setSongList([])
         setPagination(copy)
-        const rep = await getSongList()
-        mutate(rep)
+        setSongList(await getSongList())
     }
     const previous = async (b: Boolean) => {
         if (b) {
@@ -84,15 +86,27 @@ export default function Search(props: {
         commonReq(copy)
     }
 
+    const play = async (song: any) => {
+        const { kw } = await (await fetch("/api/searchSong", {
+            method: "POST",
+            body: JSON.stringify({
+                id: song.rid,
+            }),
+        })).json()
+        song.kw = kw
+        increment(song)
+    }
 
+
+    onMount(async () => setSongList(await getSongList()))
 
     return (
         <div class="min-h-[100px]">
-            <div class="btns mt-[32px] mb-[40px] flex" classList={{ 'hidden': songList.loading }}>
+            <div class="btns mt-[32px] mb-[40px] flex" classList={{ 'hidden': songListLoading() }}>
                 <button class="play bg_primary w-[150px] bg-[#ffe12c] flex items-center justify-center px-[30px] h-[40px] mr-[10px] text-center rounded-[22px] border-none text-[16px] cursor-pointer"><i class="iconfont icon-icon_play_"></i><span >播放全部</span></button>
             </div>
             <div classList={{ 'relative': loading() }}>
-                <div classList={{ 'hidden': songList.loading }}>
+                <div classList={{ 'hidden': songListLoading() }}>
                     <div class="h-[46px] leading-[46px] bg-[#fafafa] text-[#999]">
                         <ul class="flex items-center">
                             <li class="head_num w-[13.13%] pl-[2.81%] min-w-[180px]">序号</li>
@@ -122,7 +136,11 @@ export default function Search(props: {
                                     <div class="w-[5.8%] pr-[3.93%] group-hover:hidden">
                                         <span class="cursor-pointer">{song.songTimeMinutes}</span>
                                     </div>
-                                    <div class="w-[17.7%] pl-[4.28%] justify-between mr-[3.93%] text-[20px] hidden group-hover:flex"><i class="icon-[carbon--play]"></i> <i class="icon-[carbon--music-add]"></i> <i class="icon-[carbon--favorite]"></i> <i class="icon-[carbon--download]"></i></div>
+                                    <div class="w-[17.7%] pl-[4.28%] justify-between mr-[3.93%] text-[20px] hidden group-hover:flex">
+                                        <i class="icon-[carbon--play] cursor-pointer" onClick={() => play(song)}></i>
+                                        <i class="icon-[carbon--music-add] cursor-pointe"></i>
+                                        <i class="icon-[carbon--favorite] cursor-pointe"></i>
+                                        <i class="icon-[carbon--download] cursor-pointe"></i></div>
                                 </li>
                             )}
                         </For>
@@ -134,7 +152,7 @@ export default function Search(props: {
                         <i class="select-none icon-[carbon--chevron-left]  text-center  m-0 text-[#999] cursor-default opacity-[5] text-[18px] align-middle"></i>
                     </div>
                     <ul class="flex overflow-hidden items-center">
-                        <For each={pageList()}>{(page, i) =>
+                        <For each={pageList()}>{(page) =>
                             <li classList={{ 'page_current': page === pagination().page, 'page_item': page != '...' }} class="cursor-default text-[14px] mx-[5px] user-select leanding-[20px]" onClick={() => jump(page)}>
                                 <span class="select-none w-[42px] h-[42px] text-center leading-[42px] block text-[#999]">{page}</span>
                             </li>

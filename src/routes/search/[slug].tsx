@@ -1,17 +1,40 @@
-import { useParams, useRouteData } from "solid-start";
-import Console from "~/components/Console";
+import { useParams, useRouteData, RouteDataArgs, createRouteData, json } from "solid-start";
+import { createServerData$ } from "solid-start/server";
+import Console from '~/components/Console'
+
+// export function routeData({ params, location }: RouteDataArgs) {
+//     return createServerData$(
+//         async ([slug, page]) => {
+//             const response = await fetch(`http://localhost:3000/api/searchList`, {
+//                 method: "POST",
+//                 body: JSON.stringify({
+//                     keyword: slug,
+//                     page: page
+//                 })
+//             });
+//             return (await response.json());
+//         },
+//         { key: () => [params.slug, location.query['page'] || "1"] }
+//     );
+// }
 
 
-
+// export function routeData() {
+//     return createRouteData(async () => {
+//         const response = await fetch("https://hogwarts.deno.dev/students");
+//         return (await response.json());
+//     });
+// }
 
 
 
 export default function Slug() {
+    // const users = useRouteData<typeof routeData>();
     const params = useParams();
-    console.log(params.slug);
-
     return (
-        <div class="max-w-[1640px] mx-auto px-[7.5rem] pjax">
+
+
+        < div class="max-w-[1640px] mx-auto px-[7.5rem] pjax" >
             <div class="max-[765px]:hidden flex items-end mt-[43px] mb-[42px]">
                 <span class="text text-[22px] font-[600] leading-[30px] mr-[40px]"
                 >搜索结果
@@ -41,7 +64,8 @@ export default function Slug() {
                     </a>
                 </div>
             </div>
-            {/* <Console slug={slug} /> */}
-        </div>
+
+           <Console slug={params.slug} /> 
+        </div >
     )
 }

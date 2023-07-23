@@ -1,4 +1,3 @@
-
 export default function Index() {
   return (
     <div class="max-w-[1640px] mx-auto px-[7.5rem] pjax">

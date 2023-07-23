@@ -1,5 +1,4 @@
 import { APIEvent, json } from "solid-start/api";
-import { generateQueryString } from '~/utils/index'
 
 
 export const config = {
@@ -30,27 +29,22 @@ export const config = {
 
 
 export async function POST(context: APIEvent) {
-    const body: { keyword: string } = await context.request.json()
-    const { keyword } = body
-    const values = generateQueryString({
-        MusicTipCount: 10,
-        keyword: decodeURI(keyword),
-        pagesize: 10
-    })
+    const body: { id: string } = await context.request.json()
+    const { id } = body
 
     const rawRes = await (await fetch(
-        `https://searchtip.kugou.com/getSearchTip?${values}`,
+        `http://rldm.sang.pub/api.php?id=${id}`,
         {
             headers: {
                 "Content-Type": "application/json",
             },
             method: "GET"
         }
-    )).json()
+    )).text()
 
     return new Response(JSON.stringify({
         code: 200,
         message: 'success',
-        data: rawRes.data,
+        kw: rawRes
     }));
 }
