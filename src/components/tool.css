@@ -8,10 +8,6 @@
   position: fixed;
   left: 2.5rem;
   /* right: auto; */
-  width: 200px;
-  height: 200px;
-  z-index: 2000;
-  bottom: 100px;
 
   border-radius: 0.5rem;
   border: 0.0625rem solid #f7f7f7;
@@ -31,6 +27,22 @@
   max-height: 144px;
   padding: 24px;
   animation: rotate 20s linear infinite;
+}
+
+#tool .preview {
+  display: flex;
+  align-items: center;
+  padding: 1.25rem 1.25rem 0;
+}
+
+#tool .preview .info {
+  display: flex;
+  flex-direction: column;
+  margin-left: 0.625rem;
+  padding: 0.625rem;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  /* width: 100%; */
 }
 
 @keyframes rotate {
@@ -80,7 +92,13 @@
   }
 }
 
-.cover:before {
+#tool .preview .cover {
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+#tool .preview .cover:before {
   content: '';
   background: url('https://raw.githubusercontents.com/mydracula/image/master/20230723/981e8bc472a946fb83b5456c6a7a5935.png')
     no-repeat center/contain;
@@ -88,8 +106,8 @@
   position: absolute;
   width: 55px;
   height: 83px;
-  top: -1.5625rem;
-  left: -1.5625rem;
+  top: -25px;
+  left: -25px;
   animation: rotate-needle-pause 0.5s 1 normal linear forwards;
   transform-origin: 0.625rem 0.625rem;
 }
@@ -102,4 +120,32 @@
   100% {
     transform: rotateZ(-35deg);
   }
+}
+
+.controller {
+  height: 52px;
+  line-height: 52px;
+  cursor: pointer;
+  font-size: 1.25em;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  text-align: center;
+}
+
+.btn {
+  color: #666;
+  width: 18% !important;
+}
+
+.btn:hover {
+  color: #ed6ea0;
+}
+
+.btn3 {
+  font-size: 130%;
+}
+
+.playlist {
+  border-top: 0.125rem solid rgba(0, 0, 0, 0.1);
 }

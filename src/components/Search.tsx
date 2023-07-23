@@ -27,6 +27,8 @@ export default function Search() {
     });
   }
   const enterTap = (key: string) => {
+    console.log(key, value());
+
     if (key === 'Enter' && value()) {
       navigate(`/search/${value()}`);
     }
@@ -57,6 +59,7 @@ export default function Search() {
 
   const handleInput = async (e: Event) => {
     const val = (e.target as HTMLInputElement).value
+    setValue(val)
     const tip = await getTip(val)
     setTip(tip)
   }
