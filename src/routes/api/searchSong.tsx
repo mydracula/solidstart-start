@@ -33,7 +33,7 @@ export async function POST(context: APIEvent) {
     const { id } = body
 
     const rawRes = await (await fetch(
-        `http://rldm.sang.pub/api.php?id=${id}`,
+        `https://service-4v0argn6-1314197819.gz.apigw.tencentcs.com/rid/?rid=${id}`,
         {
             headers: {
                 "Content-Type": "application/json",
