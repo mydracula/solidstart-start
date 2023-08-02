@@ -26,15 +26,17 @@ export default function Root() {
         <script src="https://cdn.gitmirror.com/gh/afarkas/lazysizes/master/lazysizes.min.js"></script>
       </Head>
       <Body>
-        <Suspense>
-          <ErrorBoundary>
+
+
+        <ErrorBoundary>
+          <Suspense fallback={<div>Loading</div>}>
             <Tool></Tool>
             <Common></Common>
             <Routes>
               <FileRoutes />
             </Routes>
-          </ErrorBoundary>
-        </Suspense>
+          </Suspense>
+        </ErrorBoundary>
         <Scripts />
       </Body>
     </Html>

@@ -40,7 +40,6 @@ export async function POST(context: APIEvent) {
         plat: 'web_www'
     })
 
-    console.log(page);
 
     const rawRes = await (await fetch(
         `http://www.kuwo.cn/api/www/search/searchMusicBykeyWord?${values}`,

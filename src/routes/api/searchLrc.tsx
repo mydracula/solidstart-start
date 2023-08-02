@@ -33,21 +33,18 @@ export async function POST(context: APIEvent) {
     const { id } = body
 
     const rawRes = await (await fetch(
-        `https://service-4v0argn6-1314197819.gz.apigw.tencentcs.com/rid/?rid=${id}`,
+        `https://service-4v0argn6-1314197819.gz.apigw.tencentcs.com/lrc/?rid=${id}`,
         {
             headers: {
                 "Content-Type": "application/json",
             },
             method: "GET"
         }
-    )).text()
-
-    console.log(rawRes);
-    
+    )).json()
 
     return new Response(JSON.stringify({
         code: 200,
         message: 'success',
-        kw: rawRes
+        lrc: rawRes
     }));
 }

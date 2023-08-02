@@ -1,6 +1,7 @@
 import { createMemo, createSignal, For, createResource, type ResourceReturn, createEffect } from "solid-js"
 import './search.css'
-import { A, useNavigate } from "solid-start";
+import { useNavigate } from "solid-start";
+import { setStore, store } from '~/stores/index'
 export default function Search() {
   const navigate = useNavigate();
   const [loading, setLoading] = createSignal(true)
@@ -27,9 +28,8 @@ export default function Search() {
     });
   }
   const enterTap = (key: string) => {
-    console.log(key, value());
-
     if (key === 'Enter' && value()) {
+      (document.activeElement as HTMLInputElement).blur();
       navigate(`/search/${value()}`);
     }
   }
@@ -76,6 +76,7 @@ export default function Search() {
           ></button>
           <input
             id="search"
+            autocomplete="off"
             class="inline-block h-[34px] flex-[1] leading-[34px] border-none mr-[24px] pl-[10px] bg-[#f5f5f5] text-[14px] max-[1386px]:overflow-hidden"
             maxlength="128"
             type="text"

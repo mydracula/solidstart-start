@@ -1,9 +1,25 @@
-import { createEffect, createSignal, For, onMount, Show, createResource, Accessor, Resource, type ResourceReturn } from "solid-js"
-import { increment } from '~/stores/index'
+/*
+
+废弃
+
+*/
+
+
+
+
+
+
+
+import { createEffect, createSignal, For, onMount, Show, createResource, Accessor, Resource, type ResourceReturn, children } from "solid-js"
 import './console.css'
 
+import { setStore, store } from '~/stores/index'
+import { produce } from "solid-js/store"
+import { useLocation, useParams, useSearchParams } from "solid-start"
+
+
 export default function Search(props: {
-    slug: string
+    slug: string,
 }) {
     const [songList, setSongList] = createSignal([]) as any
     const [songListLoading, setSongListLoading] = createSignal(true)
@@ -86,22 +102,69 @@ export default function Search(props: {
         commonReq(copy)
     }
 
+    const fetchSong = async (rid?: number) => {
+        if (rid === store.musicId) return
+        setStore("musicId", rid)
+        const { kw } = await (await fetch("/api/searchSong", {
+            method: "POST",
+            body: JSON.stringify({
+                id: store.musicId,
+            }),
+        })).json()
+        setStore("kw", kw)
+    }
+
     const play = async (song: any) => {
+        if (song.rid === store.musicId) return
+        setStore("loading", true)
+        const isExist = store.musicList.find((i: any) => i.rid === song.rid)
+        if (isExist) {
+            const { kw } = await (await fetch("/api/searchSong", {
+                method: "POST",
+                body: JSON.stringify({
+                    id: song.rid,
+                }),
+            })).json()
+            setStore(produce((current: any) => {
+                const musicDetail = Object.assign({}, isExist)
+                musicDetail.kw = kw
+                musicDetail.lyrIndex = 0
+                current.musicDetail = musicDetail
+            }))
+            setStore("loading", false)
+            return
+        }
+
+
+        const { lrc } = await (await fetch("/api/searchLrc", {
+            method: "POST",
+            body: JSON.stringify({
+                id: song.rid,
+            }),
+        })).json()
         const { kw } = await (await fetch("/api/searchSong", {
             method: "POST",
             body: JSON.stringify({
                 id: song.rid,
             }),
         })).json()
-        song.kw = kw
-        increment(song)
+        setStore("isPlay", false)
+        setStore("musicList", produce((m: any) => {
+            m.unshift(song)
+        }))
+        setStore(produce((current: any) => {
+            current.musicDetail = song
+        }))
+        setStore('musicDetail', produce((current: any) => {
+            current.lrc = lrc
+            current.kw = kw
+            current.lyrIndex = 0
+        }))
+        setStore("loading", false)
     }
 
-
-    onMount(async () => setSongList(await getSongList()))
-
     return (
-        <div class="min-h-[100px]">
+        <div class="min-h-[100px] text-[14px]">
             <div class="btns mt-[32px] mb-[40px] flex" classList={{ 'hidden': songListLoading() }}>
                 <button class="play bg_primary w-[150px] bg-[#ffe12c] flex items-center justify-center px-[30px] h-[40px] mr-[10px] text-center rounded-[22px] border-none text-[16px] cursor-pointer"><i class="iconfont icon-icon_play_"></i><span >播放全部</span></button>
             </div>
@@ -119,9 +182,9 @@ export default function Search(props: {
                     <ul class="song_list">
                         <For each={songList()}>
                             {(song, i) => (
-                                <li class="h-[70px] leading-[22px] text-[#666] flex items-center hover:bg-[#f5f5f5] group">
+                                <li class="h-[70px] leading-[22px] text-[#666] flex items-center hover:bg-[#f5f5f5] group even:bg-[#fafafa]">
                                     <div class="w-[13.13%] relative pl-[3.18%] min-w-[180px] pr-[20px] flex items-center">
-                                        <div class="rank_num"><span>{(pagination().page - 1) * 20 + i() + 1}</span></div>
+                                        <div class="rank_num flex-shrink-[0] w-[20px] h-[33px] text-[#333] leading-[33px] font-[700] text-center" ><span>{(pagination().page - 1) * 20 + i() + 1}</span></div>
                                         <img src="https://h5static.kuwo.cn/upload/image/4f768883f75b17a426c95b93692d98bec7d3ee9240f77f5ea68fc63870fdb050.png" class="ml-[30%] w-[54px] h-[54px] flex-shrink-0 lazyload" data-src={song.albumpic} />
                                     </div>
                                     <div class="w-[28.2%] pr-[2.43%] flex items-center text-[#333]">
