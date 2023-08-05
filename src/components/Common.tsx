@@ -1,9 +1,24 @@
 import { A } from '@solidjs/router';
 import Search from './Search';
 import ThemeToggle from './ThemeToggle';
+import { onMount } from 'solid-js';
 
 
 export default function Common() {
+
+    onMount(() => {
+        document.body.addEventListener("vibisilitychange", () => {
+
+            document.body.focus()
+
+        });
+
+        document.body.addEventListener('keydown', (e) => {
+            console.log(e.currentTarget, e.target, '=>>');
+        })
+
+    })
+
     return (
         <>
             <A

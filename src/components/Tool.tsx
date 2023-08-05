@@ -288,7 +288,7 @@ export default function Tool() {
         setPlayType(curType)
     }
 
-    const showPlayer = () => { 
+    const showPlayer = () => {
 
     }
 
@@ -309,8 +309,9 @@ export default function Tool() {
         return m + ':' + s;
     }
 
-    const curPlayClick = async (e: any, index: number) => {
+    const curPlayClick = async (e: any) => {
         e.preventDefault()
+        const index = e.currentTarget.dataset.index
         if (store.currentIndex != index) {
             audioPlayer.pause()
             setSecondX(0)
@@ -369,6 +370,17 @@ export default function Tool() {
         window.addEventListener('touchend', onDragEnd);
         window.addEventListener('contextmenu', onDragEnd);
     }
+
+    const readyToDelete = (e: any) => {
+        const { deleteTag, index } = e.currentTarget.dataset;
+        if (deleteTag) {
+            setStore('deleteIndex', index)
+        }
+    }
+
+
+    const abandonDeletion = (e: any) => setStore('deleteIndex', -1)
+
 
 
     onMount(() => audioPlayer.volume = volume() / 100)
@@ -430,10 +442,16 @@ export default function Tool() {
 
                         <For each={store.musicList} fallback={<div>Loading...</div>}>
                             {(item, index) => (
-                                <li title={`${item.name} - ${item.artist}`} draggable="true" class={store.currentIndex === index() ? 'curPlay' : ''} onMouseDown={e => curPlayClick(e, index())}>
-                                    <div class='icon'>
-                                        <span class={store.currentIndex === index() ? 'icon-[carbon--play-filled]' : ''}></span>
-                                    </div>
+                                <li onMouseEnter={readyToDelete} onMouseLeave={abandonDeletion} title={`${item.name} - ${item.artist}`} data-deleteTag={true} data-index={index()} draggable="true" class={store.currentIndex === index() ? 'curPlay' : ''} onMouseDown={curPlayClick}>
+                                    <Show
+                                        when={store.currentIndex === index()}
+                                        fallback={<div class='index'>{index() + 1}</div>}
+                                    >
+                                        <div class='icon'>
+                                            <span class={store.currentIndex === index() ? 'icon-[carbon--play-filled]' : ''}></span>
+                                        </div>
+                                    </Show>
+
                                     <span class="info">
                                         <span innerHTML={item.name}></span>
                                         <span style={{ 'display': store.currentIndex === index() ? 'none' : 'block' }} innerHTML={item.artist}></span>

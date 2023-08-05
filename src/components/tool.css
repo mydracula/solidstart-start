@@ -250,7 +250,7 @@
   color: #999;
 }
 
-.player-info ol > li:before {
+.player-info ol > li .index {
   height: auto;
   background: 0 0 !important;
   border: none !important;

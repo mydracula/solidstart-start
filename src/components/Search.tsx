@@ -29,7 +29,7 @@ export default function Search() {
   }
   const enterTap = (key: string) => {
     if (key === 'Enter' && value()) {
-      (document.activeElement as HTMLInputElement).blur();
+      setTimeout(() => (document.activeElement as HTMLInputElement).blur(), 0);
       navigate(`/search/${value()}`);
     }
   }
