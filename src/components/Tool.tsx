@@ -371,17 +371,6 @@ export default function Tool() {
         window.addEventListener('contextmenu', onDragEnd);
     }
 
-    const readyToDelete = (e: any) => {
-        const { deleteTag, index } = e.currentTarget.dataset;
-        if (deleteTag) {
-            setStore('deleteIndex', index)
-        }
-    }
-
-
-    const abandonDeletion = (e: any) => setStore('deleteIndex', -1)
-
-
 
     onMount(() => audioPlayer.volume = volume() / 100)
     return (
@@ -442,7 +431,7 @@ export default function Tool() {
 
                         <For each={store.musicList} fallback={<div>Loading...</div>}>
                             {(item, index) => (
-                                <li onMouseEnter={readyToDelete} onMouseLeave={abandonDeletion} title={`${item.name} - ${item.artist}`} data-deleteTag={true} data-index={index()} draggable="true" class={store.currentIndex === index() ? 'curPlay' : ''} onMouseDown={curPlayClick}>
+                                <li title={`${item.name} - ${item.artist}`} data-index={index()} draggable="true" class={store.currentIndex === index() ? 'curPlay' : ''} onMouseDown={curPlayClick}>
                                     <Show
                                         when={store.currentIndex === index()}
                                         fallback={<div class='index'>{index() + 1}</div>}
