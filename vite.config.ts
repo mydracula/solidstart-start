@@ -13,7 +13,7 @@ export default defineConfig({
     //   }
     // }),
     solid({
-      inspect: false,
+      // inspect: false,
       ssr: true,
       adapter: vercel({
         edge: true
