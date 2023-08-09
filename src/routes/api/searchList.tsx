@@ -1,5 +1,5 @@
 import { APIEvent, json } from "solid-start/api";
-import { generateQueryString } from '~/utils/index'
+import { generateQueryString, handleMusicTime } from '~/utils/index'
 
 
 export const config = {
@@ -28,45 +28,68 @@ export const config = {
 }
 
 
+// http://search.kuwo.cn/r.s?all=%E5%91%A8%E6%9D%B0%E4%BC%A6&ft=music&itemset=web_2013&client=kt&pn=0&rn=100&rformat=json&encoding=utf8
+
+
+
+// http://search.kuwo.cn/r.s?newsearch=1&alflac=1&cluster=0&vermerge=1&show_copyright_off=1&pcmp4=1&ver=mbox&vipver=MUSIC_8.7.5.0_BCS34&plat=pc&devid=119153077&all=%E5%91%A8%E6%9D%B0%E4%BC%A6&ft=music&itemset=web_2013&client=kt&pn=1&rn=20&rformat=json&encoding=utf8&newsearch=1&alflac=1&cluster=0&vermerge=1&show_copyright_off=1&pcmp4=1&ver=mbox&vipver=MUSIC_8.7.5.0_BCS34&plat=pc&devid=119153077
 
 export async function POST(context: APIEvent) {
     const body: { keyword: string, page: number } = await context.request.json()
     const { keyword, page } = body
     const values = generateQueryString({
-        key: decodeURI(keyword),
-        pn: page,
+        newsearch: 1,
+        alflac: 1,
+        cluster: 0,
+        vermerge: 1,
+        show_copyright_off: 1,
+        pcmp4: 1,
+        ver: 'mbox',
+        vipver: 'MUSIC_8.7.5.0_BCS34',
+        plat: 'pc',
+        devid: '119153077',
+        all: decodeURI(keyword),
+        ft: 'music',
+        itemset: 'web_2013',
+        client: 'kt',
+        pn: page - 1,
         rn: 20,
-        httpsStatus: 1,
-        plat: 'web_www'
+        rformat: 'json',
+        encoding: 'utf8'
     })
 
 
-    const rawRes = await (await fetch(
-        `http://www.kuwo.cn/api/www/search/searchMusicBykeyWord?${values}`,
-        {
-            headers: {
-                "Content-Type": "application/json",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-                "Referer": "http://www.kuwo.cn/search/list?",
-                "Cookie": "Hm_Iuvt_cdb524f42f0ce19b169b8072123a4727=6GZ27pK4diBJayHxFrRNzJWKbbyMWzAW",
-                "Secret": "681b205ecdf4a63dda52af0ac59fd1857bc7abc6c7a76bc01a1e759cf3c3566c0417bbca"
-            },
-            method: "GET"
+    const rawRes = (await (await fetch(`http://search.kuwo.cn/r.s?${values}`, {
+        headers: {
+
+        },
+        method: "GET"
+    })).text()).replace(/'/g, '"')
+    const jsonRes = JSON.parse(rawRes)
+
+
+
+    jsonRes.list = jsonRes.abslist.map((i: any) => {
+        return {
+            name: i.NAME,
+            artist: i.ARTIST,
+            album: i.ALBUM,
+            songTimeMinutes: handleMusicTime(i.DURATION),
+            duration: i.DURATION,
+            albumpic: `https://img2.kuwo.cn/star/albumcover/${i.web_albumpic_short || i.web_artistpic_short}`,
+            rid: i.DC_TARGETID
         }
-    )).json()
-
-    console.log(rawRes);
-
-
-    return new Response(JSON.stringify({
+    })
+    return json({
         code: 200,
         message: 'success',
-        data: rawRes.data.list,
+        data: jsonRes.list,
+        abslist: jsonRes.abslist,
         paging: {
             page,
             pageSize: 20,
-            total: rawRes.data.total,
-            pages: Math.ceil(rawRes.data.total / 20)
+            total: jsonRes.HIT,
+            pages: Math.ceil(jsonRes.HIT / 20)
         }
-    }));
+    })
 }

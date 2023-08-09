@@ -30,6 +30,18 @@
   animation: slideLeftIn 0.3s;
 }
 
+#tool .player-info.hide {
+  animation: fadeOut 0.3s;
+}
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 @keyframes slideLeftIn {
   0% {
     opacity: 0;
@@ -422,7 +434,7 @@
   display: none;
 }
 
-.player-info ol > li.curPlay .icon {
+.player-info ol > li.curPlay .playicon {
   width: 20px;
   height: 100%;
   display: flex;
@@ -430,7 +442,7 @@
   margin-left: -8px;
 }
 
-.player-info ol > li.curPlay .icon span {
+.player-info ol > li.curPlay .playicon span {
   margin-top: 1px;
   font-size: 15px;
   color: #e9546b;

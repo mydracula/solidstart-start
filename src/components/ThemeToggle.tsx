@@ -1,4 +1,4 @@
-import './themeToggle.css'
+import './themeToggle.scss'
 
 export default function ThemeToggle() {
     return (

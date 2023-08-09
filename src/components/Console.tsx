@@ -2,16 +2,8 @@
 
 废弃
 
-*/
-
-
-
-
-
-
-
 import { createEffect, createSignal, For, onMount, Show, createResource, Accessor, Resource, type ResourceReturn, children } from "solid-js"
-import './console.css'
+import './console.scss'
 
 import { setStore, store } from '~/stores/index'
 import { produce } from "solid-js/store"
@@ -230,4 +222,14 @@ export default function Search(props: {
         </div>
     )
 }
+
+
+
+*/
+
+
+
+
+
+
 

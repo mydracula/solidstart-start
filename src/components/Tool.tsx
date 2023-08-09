@@ -1,7 +1,8 @@
 import { For, Show, createEffect, createMemo, createSignal, on, onMount } from 'solid-js'
-import './tool.css'
+import './tool.scss'
 import { setStore, store } from '~/stores/index'
 import { produce } from 'solid-js/store';
+import { handleMusicTime, fetchKw, fetchLrc } from '~/utils/index'
 
 
 
@@ -12,7 +13,7 @@ export default function Tool() {
     const lrcData = createMemo(() => musicDetail().lrc);
     const audioPlayerSrc = createMemo(() => store.musicDetail.kw)
     const lyrIndex = createMemo(() => musicDetail().lyrIndex)
-    const showClass = createMemo(() => store.musicList.length ? 'show' : '')
+    const [showClass, setShowClass] = createSignal(true)
     const [playType, setPlayType] = createSignal('order')
     const playTypeClass = createMemo(() => {
         switch (playType()) {
@@ -36,6 +37,10 @@ export default function Tool() {
     });
     const [lastSecond, setLastSecond] = createSignal(0)
     const [secondX, setSecondX] = createSignal(0)
+    const [barSatus, setBarStatus] = createSignal(true)
+    // 防止重复点击bar
+    const [firstTime, setFirstTime] = createSignal(0)
+
 
     // =============
     // 正在拖拉
@@ -178,7 +183,7 @@ export default function Tool() {
 
 
     const audioTime = (e: any) => {
-        if (store.load) return
+        if (store.loading) return
         let curTime = e.target.currentTime;
         const findIndex = () => {
             const index =
@@ -187,11 +192,14 @@ export default function Tool() {
                 }) - 1
             return index < 0 ? 0 : index
         }
-        setStore('currentTime', curTime)
+
+        if (barSatus()) setStore('currentTime', curTime)
         setStore('musicDetail', produce((current: any) => {
             current.lyrIndex = findIndex()
         }))
         curTime = Math.floor(curTime);
+
+
         if (curTime !== lastSecond()) {
             setLastSecond(curTime)
             setSecondX(Math.floor((curTime / musicDetail().duration) * 100))
@@ -208,12 +216,15 @@ export default function Tool() {
         setStore("isPlay", false)
     }
     const togglePlayback = () => store.isPlay ? audioPlayer.pause() : audioPlayer.play()
-    const changeMusic = async (type: string) => {
-        if (!store.musicList.length) return
+
+
+    const changeMusic = async (type: string, del?: boolean) => {
+        if (!store.musicList.length || store.loading) return
         audioPlayer.pause()
         setSecondX(0)
-        let currentMusicIndex = store.currentIndex
+
         let musicList = store.musicList
+        let currentMusicIndex = musicList.findIndex(((i: any) => i.rid == store.musicId))
         if (type === 'pre') {
             let preIndex;
             if (playType() == "order") {
@@ -232,6 +243,8 @@ export default function Tool() {
             }
             setStore('currentIndex', preIndex)
             const musicDetail = musicList[preIndex]
+
+
             setStore("loading", true)
             const { kw } = await (await fetch("/api/searchSong", {
                 method: "POST",
@@ -249,6 +262,8 @@ export default function Tool() {
         } else if (type == "next") {
             let nextIndex;
             if (playType() == "order") {
+                console.log(musicList[currentMusicIndex]);
+
                 nextIndex = currentMusicIndex + 1 == musicList.length ? 0 : currentMusicIndex + 1;
             } else if (playType() == "single") {
                 nextIndex = currentMusicIndex;
@@ -265,15 +280,21 @@ export default function Tool() {
             }
             setStore('currentIndex', nextIndex)
             const musicDetail = musicList[nextIndex]
+            setStore("musicId", musicDetail.rid)
             setStore("loading", true)
-            const { kw } = await (await fetch("/api/searchSong", {
-                method: "POST",
-                body: JSON.stringify({
-                    id: musicDetail.rid,
-                }),
-            })).json()
-            setStore(produce((current: any) => {
+
+            if (del) {
+                setStore(produce((curent: any) => {
+                    curent.musicList.splice(currentMusicIndex, 1);
+                }))
+            }
+            const kw = await fetchKw(musicDetail.rid)
+            setStore(produce(async (current: any) => {
                 const curDetail = Object.assign({}, musicDetail)
+                if (!('lrc' in curDetail)) {
+                    const lrc = await fetchLrc(musicDetail.rid)
+                    curDetail.lrc = lrc
+                }
                 curDetail.kw = kw
                 curDetail.lyrIndex = 0
                 current.musicDetail = curDetail
@@ -289,43 +310,38 @@ export default function Tool() {
     }
 
     const showPlayer = () => {
-
-    }
-
-
-    const handleMusicTime = (time: any) => {
-        if (!time) return '00:00'
-        // 如果超过了100000 基本都是毫秒为单位的了 先转成秒的
-        time = parseInt(time);
-        if (time > 10000) {
-            time = Math.floor(time / 1000);
-        } else {
-            time = Math.floor(time);
+        if (!store.musicList.length) {
+            setShowClass(true)
+            return
         }
-        let m = Math.floor(time / 60) as any;
-        let s = Math.floor(time % 60) as any;
-        m = m < 10 ? '0' + m : m;
-        s = s < 10 ? '0' + s : s;
-        return m + ':' + s;
+        if (showClass()) {
+            document.querySelector('.player-info')?.classList.add('hide')
+            setTimeout(() => setShowClass(!showClass()), 300);
+            return
+        }
+        setShowClass(!showClass())
     }
+
 
     const curPlayClick = async (e: any) => {
+        if (e.target.className.indexOf('deleteMusic') != -1) return
         e.preventDefault()
         const index = e.currentTarget.dataset.index
         if (store.currentIndex != index) {
+            setStore("loading", true)
             audioPlayer.pause()
             setSecondX(0)
             setStore('currentIndex', index)
             const musicDetail = store.musicList[index]
-            setStore("loading", true)
-            const { kw } = await (await fetch("/api/searchSong", {
-                method: "POST",
-                body: JSON.stringify({
-                    id: musicDetail.rid,
-                }),
-            })).json()
-            setStore(produce((current: any) => {
+            setStore('musicId', musicDetail.rid)
+
+            const kw = await fetchKw(musicDetail.rid)
+            setStore(produce(async (current: any) => {
                 const curDetail = Object.assign({}, musicDetail)
+                if (!('lrc' in curDetail)) {
+                    const lrc = await fetchLrc(musicDetail.rid)
+                    curDetail.lrc = lrc
+                }
                 curDetail.kw = kw
                 curDetail.lyrIndex = 0
                 current.musicDetail = curDetail
@@ -334,26 +350,32 @@ export default function Tool() {
 
             return
         }
+        setBarStatus(false)
         let dragging = true;
         const li = e.currentTarget
-        let startX = e.clientX
+        const startX = e.clientX
         const liOffsetLeft = li.getBoundingClientRect().left;
         const curWidth = Math.round((startX - liOffsetLeft) / li.clientWidth * 100)
-        const onDragging = () => {
+        const onDragging = (e: any) => {
             dragging = true
+            const diff = Math.round((e.clientX - startX) / li.clientWidth * 100)
+            const newWidth = Math.max(0, Math.min(diff + curWidth, 100))
+            setStore('currentTime', (newWidth * musicDetail().duration) / 100)
         }
-
+        // bar
         const onDragEnd = (e: any) => {
             if (dragging) {
+
                 setTimeout(() => {
                     dragging = false
-                    let diff = Math.round((e.clientX - startX) / li.clientWidth * 100)
+                    const diff = Math.round((e.clientX - startX) / li.clientWidth * 100)
                     const newWidth = diff + curWidth
-                    // const liOffsetLeft = li.getBoundingClientRect().left;
-                    // const curWidth = Math.round((e.clientX - liOffsetLeft) / li.clientWidth * 100)
+                    const lastTime = (newWidth * musicDetail().duration) / 100
+                    if (lastTime === firstTime()) return
                     audioPlayer.currentTime = (newWidth * musicDetail().duration) / 100
+                    setBarStatus(true)
                     setSecondX(newWidth)
-                    // audioPlayer.play()
+                    setFirstTime(lastTime)
                 }, 0);
                 window.removeEventListener('mousemove', onDragging);
                 window.removeEventListener('touchmove', onDragging);
@@ -371,6 +393,47 @@ export default function Tool() {
         window.addEventListener('contextmenu', onDragEnd);
     }
 
+    const clear = () => {
+        audioPlayer.pause()
+        setStore(produce((current: any) => {
+            current.loading = true
+            current.musicList = []
+            current.musicId = 0
+            current.currentIndex = -1
+            current.currentTime = null
+            current.musicDetail = {
+                songTimeMinutes: '00:00',
+                duration: 0,
+                name: null,
+                artist: null,
+                albumpic: null,
+                lrc: [],
+                kw: null,
+                lyrIndex: 0
+            }
+        }))
+    }
+
+
+
+    const deleteMusic = async (e: Event) => {
+        const { rid, index } = (e.target as HTMLInputElement).dataset
+        const { musicId, musicList, loading } = store
+
+        if (rid == musicId) {
+            if (musicList.length != 1) {
+                await changeMusic('next', true);
+            } else {
+                audioPlayer.pause()
+                clear()
+                return
+            }
+        } else {
+            setStore(produce((curent: any) => {
+                curent.musicList.splice(index, 1);
+            }))
+        }
+    }
 
     onMount(() => audioPlayer.volume = volume() / 100)
     return (
@@ -380,7 +443,7 @@ export default function Tool() {
                 <audio ref={audioPlayer} onEnded={() => changeMusic('next')} src={audioPlayerSrc()} onTimeUpdate={audioTime} autoplay onPlay={onPlay} onPause={onPause}></audio>
             </div>
 
-            <div class={`player-info ${showClass()}`}>
+            <div class={`player-info ${(showClass() && store.musicList.length) ? 'show' : ''}`}>
                 <div class="preview">
                     <div class="cover">
                         <div class="disc" style={{ 'animation-play-state': store.isPlay ? 'running' : 'paused' }}>
@@ -393,7 +456,7 @@ export default function Tool() {
 
                         <Show
                             when={!store.loading}
-                            fallback={<span class='loading'>歌词加载中...</span>}
+                            fallback={<span class='loading'>加载中...</span>}
                         >
                             <div class="lrc">
                                 <div class="inner" style={`transform: translateY(${lyrIndexY()}rem);`}>
@@ -426,27 +489,43 @@ export default function Tool() {
                         </div>
                     </div>
                 </div>
-                <div class='playlist' style="height:247px">
+                <div class='playlist'>
+                    <div class='border-b-[1px] border-[rgba(253,253,253,0.7)] h-[35px]'>
+                        <ul class='h-[100%] w-fit'>
+                            <li onClick={clear} class='text-[#333] text-[12px] py-[5px] px-[20px] flex items-center h-[inherit] hover:text-[#f9d2e1] hover:font-bold  cursor-pointer '>
+                                <span class='icon-[carbon--trash-can] mr-[1px]'></span>
+                                <span>清空列表</span>
+                            </li>
+                        </ul>
+                    </div>
+
                     <ol>
 
                         <For each={store.musicList} fallback={<div>Loading...</div>}>
                             {(item, index) => (
-                                <li title={`${item.name} - ${item.artist}`} data-index={index()} draggable="true" class={store.currentIndex === index() ? 'curPlay' : ''} onMouseDown={curPlayClick}>
+                                <li title={`${item.name} - ${item.artist}`} data-index={index()} draggable="true" class={`${store.musicId === item.rid ? 'curPlay' : ''} group`} onMouseDown={curPlayClick}>
                                     <Show
-                                        when={store.currentIndex === index()}
+                                        when={store.musicId === item.rid}
                                         fallback={<div class='index'>{index() + 1}</div>}
                                     >
-                                        <div class='icon'>
-                                            <span class={store.currentIndex === index() ? 'icon-[carbon--play-filled]' : ''}></span>
+                                        <div class='playicon'>
+                                            <span class={store.musicId === item.rid ? 'icon-[carbon--play-filled]' : ''}></span>
                                         </div>
                                     </Show>
 
+                                    <div class='deleteMusic hidden group-hover:flex cursor-pointer absolute top-0 text-[16px] h-[100%] left-[18px] items-center text-[#f9d2e1] bg-[#FDFDFD] z-[2]' data-rid={item.rid} data-index={index()} onClick={deleteMusic}>
+                                        <div class='deleteMusic icon-[carbon--trash-can]' data-rid={item.rid} data-index={index()}></div>
+                                    </div>
+
+
+
                                     <span class="info">
-                                        <span innerHTML={item.name}></span>
-                                        <span style={{ 'display': store.currentIndex === index() ? 'none' : 'block' }} innerHTML={item.artist}></span>
+                                        {secondX()}
+                                        <span class='overflow-hidden text-ellipsis whitespace-nowrap max-w-[12rem] inline-block' innerHTML={item.name}></span>
+                                        <span style={{ 'display': store.musicId === item.rid ? 'none' : 'block' }} innerHTML={item.artist}></span>
                                     </span>
                                     <Show
-                                        when={store.currentIndex === index()}
+                                        when={store.musicId === item.rid}
                                     >
                                         <div class="progress" data-dtime={musicDetail().songTimeMinutes} data-ptime={handleMusicTime(store.currentTime)}>
                                             <div class="bar" style={{ 'width': `${secondX()}%` }}></div>

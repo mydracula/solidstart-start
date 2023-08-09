@@ -18,5 +18,4 @@ export const [store, setStore] = createStore({
     kw: null,
     lyrIndex: 0
   },
-  deleteIndex: -1
 }) as any

@@ -2,7 +2,8 @@ import { For, createMemo, createSignal, on, createEffect } from "solid-js";
 import { produce } from "solid-js/store";
 import { useParams } from "solid-start";
 import { setStore, store } from '~/stores/index'
-import '~/components/console.css'
+import { fetchKw, fetchLrc } from '~/utils/index'
+import '~/components/console.scss'
 
 
 export default function Slug() {
@@ -93,15 +94,15 @@ export default function Slug() {
         if (song.rid === store.musicId) return
         setStore("loading", true)
         const isExist = store.musicList.find((i: any) => i.rid === song.rid)
+        document.querySelector('audio')?.pause()
         if (isExist) {
-            const { kw } = await (await fetch("/api/searchSong", {
-                method: "POST",
-                body: JSON.stringify({
-                    id: song.rid,
-                }),
-            })).json()
-            setStore(produce((current: any) => {
+            const kw = await fetchKw(song.rid)
+            setStore(produce(async (current: any) => {
                 const musicDetail = Object.assign({}, isExist)
+                if (!('lrc' in musicDetail)) {
+                    const lrc = await fetchLrc(song.rid)
+                    musicDetail.lrc = lrc
+                }
                 musicDetail.kw = kw
                 musicDetail.lyrIndex = 0
                 current.musicDetail = musicDetail
@@ -109,30 +110,31 @@ export default function Slug() {
             setStore("loading", false)
             return
         }
-
-
-        const { lrc } = await (await fetch("/api/searchLrc", {
-            method: "POST",
-            body: JSON.stringify({
-                id: song.rid,
-            }),
-        })).json()
+        setStore("isPlay", false)
         const { kw } = await (await fetch("/api/searchSong", {
             method: "POST",
             body: JSON.stringify({
                 id: song.rid,
             }),
         })).json()
-        setStore("isPlay", false)
         setStore("musicList", produce((m: any) => {
             m.unshift(song)
         }))
+        setStore('musicId', song.rid)
         setStore(produce((current: any) => {
             current.musicDetail = song
         }))
         setStore('musicDetail', produce((current: any) => {
-            current.lrc = lrc
             current.kw = kw
+        }))
+        const { lrc } = await (await fetch("/api/searchLrc", {
+            method: "POST",
+            body: JSON.stringify({
+                id: song.rid,
+            }),
+        })).json()
+        setStore('musicDetail', produce((current: any) => {
+            current.lrc = lrc
             current.lyrIndex = 0
         }))
         setStore("loading", false)
@@ -143,6 +145,18 @@ export default function Slug() {
         setStore("musicList", produce((m: any) => {
             m.push(song)
         }))
+    }
+
+    const playAll = async () => {
+        const musicList = store.musicList
+        const filterList = songList().filter((item: { rid: number; }) => {
+            return !musicList.some((i: { rid: number; }) => i.rid === item.rid)
+        })
+        const newList = musicList.concat(filterList)
+        if (!store.isPlay) {
+            await play(newList[0])
+        }
+        setStore("musicList", newList)
     }
 
     createEffect(on(slug, async () => setSongList(await getSongList())));
@@ -181,7 +195,7 @@ export default function Slug() {
             </div>
             <div class="min-h-[100px] text-[14px]">
                 <div class="btns mt-[32px] mb-[40px] flex" classList={{ 'hidden': songListLoading() }}>
-                    <button class="play bg_primary w-[150px] bg-[#ffe12c] flex items-center justify-center px-[30px] h-[40px] mr-[10px] text-center rounded-[22px] border-none text-[16px] cursor-pointer"><i class="iconfont icon-icon_play_"></i><span >播放全部</span></button>
+                    <button onClick={playAll} class="play bg_primary w-[150px] bg-[#ffe12c] flex items-center justify-center px-[30px] h-[40px] mr-[10px] text-center rounded-[22px] border-none text-[16px] cursor-pointer"><i class="iconfont icon-icon_play_"></i><span >播放全部</span></button>
                 </div>
                 <div classList={{ 'relative': loading() }}>
                     <div classList={{ 'hidden': songListLoading() }}>
@@ -203,7 +217,7 @@ export default function Slug() {
                                             <img src="https://h5static.kuwo.cn/upload/image/4f768883f75b17a426c95b93692d98bec7d3ee9240f77f5ea68fc63870fdb050.png" class="ml-[30%] w-[54px] h-[54px] flex-shrink-0 lazyload" data-src={song.albumpic} />
                                         </div>
                                         <div class="w-[28.2%] pr-[2.43%] flex items-center text-[#333]">
-                                            <a href="javascript:;" class="cursor-pointer text-[#333] shrink overflow-hidden" innerHTML={song.name}></a>
+                                            <a href="javascript:;" class="cursor-pointer text-[#333] shrink overflow-hidden text-ellipsis whitespace-nowrap" innerHTML={song.name}></a>
                                         </div>
                                         <div class="w-[24%] overflow-hidden text-ellipsis whitespace-nowrap pr-[1%]">
                                             <span class="cursor-pointer" innerHTML={song.artist}></span>

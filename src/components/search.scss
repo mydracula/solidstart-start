@@ -1,0 +1,11 @@
+.search_out {
+  transition: all 0.4s ease-in-out;
+}
+
+.search_out.search_focus {
+  @apply w-[294px] overflow-visible #{!important};
+}
+
+.host {
+  @apply top-[110%] opacity-[1] #{!important};
+}

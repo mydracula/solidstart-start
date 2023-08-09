@@ -1,5 +1,5 @@
 import { createMemo, createSignal, For, createResource, type ResourceReturn, createEffect } from "solid-js"
-import './search.css'
+import './search.scss'
 import { useNavigate } from "solid-start";
 import { setStore, store } from '~/stores/index'
 export default function Search() {
@@ -29,7 +29,7 @@ export default function Search() {
   }
   const enterTap = (key: string) => {
     if (key === 'Enter' && value()) {
-      setTimeout(() => (document.activeElement as HTMLInputElement).blur(), 0);
+      (document.activeElement as HTMLInputElement).blur()
       navigate(`/search/${value()}`);
     }
   }
@@ -90,7 +90,7 @@ export default function Search() {
         </div>
 
 
-        <div class="list absolute top-[0] left-[0] bg-[#fff] pt-[18px] pb-[15px] opacity-0 z-0 shadow-[0_10px_30px_0_rgba(65,67,70,.08)] rounded-[4px] transition-[top] duration-4000 ease-in-out w-[100%]" classList={{ host: !loading() && tip()?.length }}>
+        <div class="list absolute top-[0] left-[0] bg-[#fff] pt-[18px] pb-[15px] opacity-0 z-0 shadow-[0_10px_30px_0_rgba(65,67,70,.08)] rounded-[4px] transition-[top] duration-4000 ease-in-out w-[100%]" classList={{ host: !loading() && tip()?.length && (focus() || tipShow()) }}>
           <ul onMouseOver={() => setTipShow(true)} onMouseOut={() => setTipShow(false)}>
             <For each={tip()}>{(k, i) =>
               <li onclick={(e) => enterClick(e)} class="select-none iddd h-[38px] leading-[38px] font-[300] bg-[#fff] px-[18px] hover:cursor-pointer hover:bg-[#f5f5f5] overflow-hidden">

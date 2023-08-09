@@ -28,6 +28,7 @@ export default function Root() {
         <Link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <Link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="192x192" />
         <script src="https://cdn.gitmirror.com/gh/afarkas/lazysizes/master/lazysizes.min.js"></script>
+        {/* <script type="module" src="/src/utils/pwa.ts"></script> */}
       </Head>
       <Body>
 

@@ -32,7 +32,7 @@
 }
 
 .loading-mask {
-    @apply absolute z-[1000] bg-[#fff] m-0 top-0 right-0 bottom-0 left-0 min-h-[100px] transition-opacity duration-300 flex justify-center
+    @apply absolute z-[2] bg-[#fff] m-0 top-0 right-0 bottom-0 left-0 min-h-[100px] transition-opacity duration-300 flex justify-center
 }
 
 .load span {
