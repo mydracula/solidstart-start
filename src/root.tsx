@@ -16,14 +16,21 @@ import {
   Link
 } from "solid-start";
 import "./root.css";
+import { createLocalMusicList, getIsMobile } from '~/utils/index'
+import { onMount } from "solid-js";
+
 
 export default function Root() {
+  onMount(() => {
+    getIsMobile()
+    createLocalMusicList('musicList', [])
+  })
   return (
     <Html lang="en">
       <Head>
         <Title>SolidStart - Bare</Title>
         <Meta charset="utf-8" />
-        <Meta name="viewport" content="width=device-width, initial-scale=1" />
+        <Meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <Meta name="theme-color" content="#f6f8fa" />
         <Link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <Link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="192x192" />

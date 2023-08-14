@@ -1,9 +1,12 @@
-import { For, createMemo, createSignal, on, createEffect } from "solid-js";
+import { For, createMemo, createSignal, on, createEffect, onMount, Show } from "solid-js";
 import { produce } from "solid-js/store";
-import { useParams } from "solid-start";
-import { setStore, store } from '~/stores/index'
-import { fetchKw, fetchLrc } from '~/utils/index'
+import { Navigate, useParams } from "solid-start";
+import { setStore, store, setSource, setPlaying, playing } from '~/stores/index'
+import { fetchKw, fetchLrc, getPageList } from '~/utils/index'
 import '~/components/console.scss'
+
+
+
 
 
 export default function Slug() {
@@ -19,33 +22,6 @@ export default function Slug() {
         total: 0,
         pages: 1,
     })
-    const getPageList = (paging: any) => {
-        const { pages, page } = paging
-        if (pages < 4) return new Array(pages).fill(1).map((num, index) => num + index)
-        const startDiff = Math.abs(page - 1)
-        const endDiff = Math.abs(page - pages)
-        const diff = startDiff <= endDiff ? startDiff : endDiff
-        if (diff == 0) {
-            if (page === pages) return [1, '...', pages - 1, pages]
-            return [1, 2, '...', pages]
-        }
-        if (diff == 1) {
-            if (pages <= 4) return Array.from({ length: pages }, (v, i) => i + 1)
-            if (pages - 1 === page) return [1, '...', page - 1, page, pages]
-            return [1, 2, 3, '...', pages]
-        }
-        if (diff == 2) {
-            if (pages <= 5) {
-                if ((1 + pages) / 2 === page) return Array.from({ length: pages }, (v, i) => i + 1)
-            }
-            if (page + 1 === pages - 1) return [1, '...', page - 1, page, page + 1, pages]
-            if (page - 1 === 1 + 1) return [1, page - 1, page, page + 1, '...', pages]
-        }
-        if (diff > 2) {
-            if (pages <= 4) return [1, '...', pages - 1, pages]
-            return [1, '...', page - 1, page, page + 1, '...', pages]
-        }
-    }
     async function getSongList() {
         setLoading(true)
         const { data, paging } = await fetch("/api/searchList", {
@@ -94,38 +70,32 @@ export default function Slug() {
         if (song.rid === store.musicId) return
         setStore("loading", true)
         const isExist = store.musicList.find((i: any) => i.rid === song.rid)
-        document.querySelector('audio')?.pause()
         if (isExist) {
+            setStore('musicId', song.rid)
             const kw = await fetchKw(song.rid)
+            setSource(kw)
+            setPlaying(true)
             setStore(produce(async (current: any) => {
                 const musicDetail = Object.assign({}, isExist)
                 if (!('lrc' in musicDetail)) {
                     const lrc = await fetchLrc(song.rid)
                     musicDetail.lrc = lrc
                 }
-                musicDetail.kw = kw
                 musicDetail.lyrIndex = 0
                 current.musicDetail = musicDetail
             }))
             setStore("loading", false)
             return
         }
-        setStore("isPlay", false)
-        const { kw } = await (await fetch("/api/searchSong", {
-            method: "POST",
-            body: JSON.stringify({
-                id: song.rid,
-            }),
-        })).json()
+        const kw = await fetchKw(song.rid)
+        setSource(kw)
+        setPlaying(true)
         setStore("musicList", produce((m: any) => {
             m.unshift(song)
         }))
         setStore('musicId', song.rid)
         setStore(produce((current: any) => {
             current.musicDetail = song
-        }))
-        setStore('musicDetail', produce((current: any) => {
-            current.kw = kw
         }))
         const { lrc } = await (await fetch("/api/searchLrc", {
             method: "POST",
@@ -153,111 +123,117 @@ export default function Slug() {
             return !musicList.some((i: { rid: number; }) => i.rid === item.rid)
         })
         const newList = musicList.concat(filterList)
-        if (!store.isPlay) {
+        if (!playing()) {
             await play(newList[0])
         }
         setStore("musicList", newList)
     }
 
+
+
+
     createEffect(on(slug, async () => setSongList(await getSongList())));
 
-    return (
 
-        < div class="max-w-[1640px] mx-auto px-[7.5rem] pjax" >
-            <div class="max-[765px]:hidden flex items-end mt-[43px] mb-[42px]">
-                <span class="text text-[22px] font-[600] leading-[30px] mr-[40px]"
-                >搜索结果
-                </span>
-                <div class="leading-[1]">
-                    <a
-                        href="javascript:;"
-                        class="font-[600] text-[14px] relative inline-block h-[20px] leading-[20px] mr-[34px] text-[#333] after:left-[0] after:bottom-[1px] after:w-[100%] after:h-[6px] after:bg-[#ffe443] after:absolute after:content-[''] after:z-[-1]"
-                    >单曲
-                    </a><a
-                        href="javascript:;"
-                        class="font-[300] text-[14px] relative inline-block h-[20px] leading-[20px] mr-[34px] text-[#333]"
-                    >专辑
-                    </a><a
-                        href="javascript:;"
-                        class="font-[300] text-[14px] relative inline-block h-[20px] leading-[20px] mr-[34px] text-[#333]"
-                    >MV</a>
-                    <a
-                        href="javascript:;"
-                        class="font-[300] text-[14px] relative inline-block h-[20px] leading-[20px] mr-[34px] text-[#333]"
-                    >歌单
-                    </a>
-                    <a
-                        href="javascript:;"
-                        class="font-[300] text-[14px] relative inline-block h-[20px] leading-[20px] mr-[34px] text-[#333]"
-                    >歌手
-                    </a>
+
+    return (
+        <Show when={!store.isMobile} fallback={<Navigate href="/search" />}>
+            <div class="max-w-[1640px] mx-auto px-[7.5rem]" >
+                <div class="max-[765px]:hidden flex items-end mt-[43px] mb-[42px]">
+                    <span class="text text-[22px] font-[600] leading-[30px] mr-[40px]"
+                    >搜索结果
+                    </span>
+                    <div class="leading-[1]">
+                        <a
+                            href="javascript:;"
+                            class="font-[600] text-[14px] relative inline-block h-[20px] leading-[20px] mr-[34px] text-[#333] after:left-[0] after:bottom-[1px] after:w-[100%] after:h-[6px] after:bg-[#ffe443] after:absolute after:content-[''] after:z-[-1]"
+                        >单曲
+                        </a><a
+                            href="javascript:;"
+                            class="font-[300] text-[14px] relative inline-block h-[20px] leading-[20px] mr-[34px] text-[#333]"
+                        >专辑
+                        </a><a
+                            href="javascript:;"
+                            class="font-[300] text-[14px] relative inline-block h-[20px] leading-[20px] mr-[34px] text-[#333]"
+                        >MV</a>
+                        <a
+                            href="javascript:;"
+                            class="font-[300] text-[14px] relative inline-block h-[20px] leading-[20px] mr-[34px] text-[#333]"
+                        >歌单
+                        </a>
+                        <a
+                            href="javascript:;"
+                            class="font-[300] text-[14px] relative inline-block h-[20px] leading-[20px] mr-[34px] text-[#333]"
+                        >歌手
+                        </a>
+                    </div>
                 </div>
-            </div>
-            <div class="min-h-[100px] text-[14px]">
-                <div class="btns mt-[32px] mb-[40px] flex" classList={{ 'hidden': songListLoading() }}>
-                    <button onClick={playAll} class="play bg_primary w-[150px] bg-[#ffe12c] flex items-center justify-center px-[30px] h-[40px] mr-[10px] text-center rounded-[22px] border-none text-[16px] cursor-pointer"><i class="iconfont icon-icon_play_"></i><span >播放全部</span></button>
-                </div>
-                <div classList={{ 'relative': loading() }}>
-                    <div classList={{ 'hidden': songListLoading() }}>
-                        <div class="h-[46px] leading-[46px] bg-[#fafafa] text-[#999]">
-                            <ul class="flex items-center">
-                                <li class="head_num w-[13.13%] pl-[2.81%] min-w-[180px]">序号</li>
-                                <li class="head_name w-[28.2%]">歌曲</li>
-                                <li class="head_artist w-[24%]">歌手</li>
-                                <li class="head_album flex-1">专辑</li>
-                                <li class="head_time w-[5.8%]">时长</li>
+                <div class="min-h-[100px] text-[14px] max-[765px]:hidden">
+                    <div class="btns mt-[32px] mb-[40px] flex" classList={{ 'hidden': songListLoading() }}>
+                        <button onClick={playAll} class="play bg_primary w-[150px] bg-[#ffe12c] flex items-center justify-center px-[30px] h-[40px] mr-[10px] text-center rounded-[22px] border-none text-[16px] cursor-pointer"><i class="iconfont icon-icon_play_"></i><span >播放全部</span></button>
+                    </div>
+                    <div classList={{ 'relative': loading(), hidden: !songList().length }}>
+                        <div classList={{ 'hidden': songListLoading() }} >
+                            <div class="h-[46px] leading-[46px] bg-[#fafafa] text-[#999]">
+                                <ul class="flex items-center">
+                                    {/* min-w-[180px] */}
+                                    <li class="head_num w-[13.13%] pl-[2.81%] min-w-[180px] max-[1180px]:min-w-[auto]   max-[1180px]:w-[88px]">序号</li>
+                                    <li class="head_name w-[28.2%] max-[1180px]:flex-1  max-[1180px]:w-0">歌曲</li>
+                                    <li class="head_artist w-[24%]  max-[1180px]:flex-1  max-[1180px]:w-0">歌手</li>
+                                    <li class="head_album flex-1 max-[1180px]:flex-1  max-[1180px]:w-0">专辑</li>
+                                    <li class="head_time w-[5.8%] max-[1180px]:flex-[0_0_60px] max-[1180px]:w-0">时长</li>
+                                </ul>
+                            </div>
+                            <ul class="song_list">
+                                <For each={songList()}>
+                                    {(song, i) => (
+                                        <li class="h-[70px] leading-[22px] text-[#666] flex items-center hover:bg-[#f5f5f5] group even:bg-[#fafafa]">
+                                            <div class="w-[13.13%] relative pl-[3.18%] min-w-[180px] pr-[20px] flex items-center max-[1180px]:min-w-[auto]  max-[1180px]:w-[88px]">
+                                                <div class="rank_num flex-shrink-[0] w-[20px] h-[33px] text-[#333] leading-[33px] font-[700] text-center" ><span>{(pagination().page - 1) * 20 + i() + 1}</span></div>
+                                                <img src="https://h5static.kuwo.cn/upload/image/4f768883f75b17a426c95b93692d98bec7d3ee9240f77f5ea68fc63870fdb050.png" class="ml-[30%] w-[54px] h-[54px] flex-shrink-0 lazyload max-[1180px]:hidden" data-src={song.albumpic} />
+                                            </div>
+                                            <div class="w-[28.2%] pr-[2.43%] flex items-center text-[#333]  max-[1180px]:flex-1  max-[1180px]:w-0 max-[1180px]:pr-0">
+                                                <a href="javascript:;" class="cursor-pointer text-[#333] shrink overflow-hidden text-ellipsis whitespace-nowrap" innerHTML={song.name}></a>
+                                            </div>
+                                            <div class="w-[24%] overflow-hidden text-ellipsis whitespace-nowrap pr-[1%]  max-[1180px]:flex-1  max-[1180px]:w-0  max-[1180px]:pr-0">
+                                                <span class="cursor-pointer" innerHTML={song.artist}></span>
+                                            </div>
+                                            <div class="flex-1 overflow-hidden  max-[1180px]:group-hover:hidden  text-ellipsis whitespace-nowrap  max-[1180px]:flex-1  max-[1180px]:w-0">
+                                                <span class="cursor-pointer" innerHTML={song.album}></span>
+                                            </div>
+                                            <div class="w-[5.8%] pr-[3.93%] group-hover:hidden  max-[1180px]:flex-[0_0_60px] max-[1180px]:w-0">
+                                                <span class="cursor-pointer">{song.songTimeMinutes}</span>
+                                            </div>
+                                            <div class="w-[17.7%] pl-[4.28%] justify-between mr-[3.93%] text-[20px] hidden group-hover:flex cursor-pointer max-[1180px]:flex-1  max-[1180px]:w-0  max-[1180px]:mr-[60px]  max-[1180px]:pl-0">
+                                                <i class="icon-[carbon--play] cursor-pointer" onClick={() => play(song)}></i>
+                                                <i class="icon-[carbon--music-add] cursor-pointe" onClick={() => addToPlaylist(song)}></i>
+                                                <i class="icon-[carbon--favorite] cursor-pointe"></i>
+                                                <i class="icon-[carbon--download] cursor-pointe"></i></div>
+                                        </li>
+                                    )}
+                                </For>
                             </ul>
                         </div>
-                        <ul class="song_list">
-                            <For each={songList()}>
-                                {(song, i) => (
-                                    <li class="h-[70px] leading-[22px] text-[#666] flex items-center hover:bg-[#f5f5f5] group even:bg-[#fafafa]">
-                                        <div class="w-[13.13%] relative pl-[3.18%] min-w-[180px] pr-[20px] flex items-center">
-                                            <div class="rank_num flex-shrink-[0] w-[20px] h-[33px] text-[#333] leading-[33px] font-[700] text-center" ><span>{(pagination().page - 1) * 20 + i() + 1}</span></div>
-                                            <img src="https://h5static.kuwo.cn/upload/image/4f768883f75b17a426c95b93692d98bec7d3ee9240f77f5ea68fc63870fdb050.png" class="ml-[30%] w-[54px] h-[54px] flex-shrink-0 lazyload" data-src={song.albumpic} />
-                                        </div>
-                                        <div class="w-[28.2%] pr-[2.43%] flex items-center text-[#333]">
-                                            <a href="javascript:;" class="cursor-pointer text-[#333] shrink overflow-hidden text-ellipsis whitespace-nowrap" innerHTML={song.name}></a>
-                                        </div>
-                                        <div class="w-[24%] overflow-hidden text-ellipsis whitespace-nowrap pr-[1%]">
-                                            <span class="cursor-pointer" innerHTML={song.artist}></span>
-                                        </div>
-                                        <div class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                                            <span class="cursor-pointer" innerHTML={song.album}></span>
-                                        </div>
-                                        <div class="w-[5.8%] pr-[3.93%] group-hover:hidden">
-                                            <span class="cursor-pointer">{song.songTimeMinutes}</span>
-                                        </div>
-                                        <div class="w-[17.7%] pl-[4.28%] justify-between mr-[3.93%] text-[20px] hidden group-hover:flex cursor-pointer">
-                                            <i class="icon-[carbon--play] cursor-pointer" onClick={() => play(song)}></i>
-                                            <i class="icon-[carbon--music-add] cursor-pointe" onClick={() => addToPlaylist(song)}></i>
-                                            <i class="icon-[carbon--favorite] cursor-pointe"></i>
-                                            <i class="icon-[carbon--download] cursor-pointe"></i></div>
+                        <div class="loading-mask" classList={{ '!hidden': !loading() }}><div class="loading-wrap absolute top-[10%] left-0 right w-[stretch]"><div class="load h-[22px] leading-[22px] text-center"><span class="side1"></span> <span class="side2"></span> <span class="mid"></span> <span class="side2"></span> <span class="side1"></span></div> </div></div>
+                        <nav class="pagination text-center text-[14px] mt-[48px] items-center justify-center flex">
+                            <div class="w-[42px] h-[42px] leading-[42px]" classList={{ 'page_up': pagination().page > 1 }} onClick={() => previous(pagination().page > 1)}>
+                                <i class="select-none icon-[carbon--chevron-left]  text-center  m-0 text-[#999] cursor-default opacity-[5] text-[18px] align-middle"></i>
+                            </div>
+                            <ul class="flex overflow-hidden items-center">
+                                <For each={pageList()}>{(page) =>
+                                    <li classList={{ 'page_current': page === pagination().page, 'page_item': page != '...' }} class="cursor-default text-[14px] mx-[5px] user-select leanding-[20px]" onClick={() => jump(page)}>
+                                        <span class="select-none w-[42px] h-[42px] text-center leading-[42px] block text-[#999]">{page}</span>
                                     </li>
-                                )}
-                            </For>
-                        </ul>
+                                }</For>
+                            </ul>
+                            <div class="w-[42px] h-[42px] leading-[42px] group" classList={{ 'page_down': pagination().page !== pagination().pages }} onClick={() => next(pagination().page < pagination().pages)}>
+                                <i class="select-none icon-[carbon--chevron-right]  text-center  m-0 text-[#999] cursor-default opacity-[5] text-[18px] align-middle"></i>
+                            </div>
+                        </nav>
                     </div>
-                    <div class="loading-mask" classList={{ '!hidden': !loading() }}><div class="loading-wrap absolute top-[10%] left-0 right w-[stretch]"><div class="load h-[22px] leading-[22px] text-center"><span class="side1"></span> <span class="side2"></span> <span class="mid"></span> <span class="side2"></span> <span class="side1"></span></div> </div></div>
-                    <nav class="pagination text-center text-[14px] mt-[48px] items-center justify-center flex">
-                        <div class="w-[42px] h-[42px] leading-[42px]" classList={{ 'page_up': pagination().page > 1 }} onClick={() => previous(pagination().page > 1)}>
-                            <i class="select-none icon-[carbon--chevron-left]  text-center  m-0 text-[#999] cursor-default opacity-[5] text-[18px] align-middle"></i>
-                        </div>
-                        <ul class="flex overflow-hidden items-center">
-                            <For each={pageList()}>{(page) =>
-                                <li classList={{ 'page_current': page === pagination().page, 'page_item': page != '...' }} class="cursor-default text-[14px] mx-[5px] user-select leanding-[20px]" onClick={() => jump(page)}>
-                                    <span class="select-none w-[42px] h-[42px] text-center leading-[42px] block text-[#999]">{page}</span>
-                                </li>
-                            }</For>
-                        </ul>
-                        <div class="w-[42px] h-[42px] leading-[42px] group" classList={{ 'page_down': pagination().page !== pagination().pages }} onClick={() => next(pagination().page < pagination().pages)}>
-                            <i class="select-none icon-[carbon--chevron-right]  text-center  m-0 text-[#999] cursor-default opacity-[5] text-[18px] align-middle"></i>
-                        </div>
-                    </nav>
+
                 </div>
-
-            </div>
-
-        </div >
+            </div >
+        </Show>
     )
 }

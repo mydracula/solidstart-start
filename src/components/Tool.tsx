@@ -1,19 +1,28 @@
+// @ts-nocheck
 import { For, Show, createEffect, createMemo, createSignal, on, onMount } from 'solid-js'
 import './tool.scss'
-import { setStore, store } from '~/stores/index'
+import { setStore, store, source, setSource, setPlaying, playing, volume, setVolume } from '~/stores/index'
 import { produce } from 'solid-js/store';
-import { handleMusicTime, fetchKw, fetchLrc } from '~/utils/index'
+import { handleMusicTime, fetchKw, fetchLrc, debounce, scrollIntoView } from '~/utils/index'
+import ClickOutside from './ClickOutside';
+import { createAudio } from '@solid-primitives/audio';
+import SoundBar from './SoundBar'
 
 
 
 export default function Tool() {
-    let slider: any;
-    let audioPlayer: any;
+    const [barStatus, setBarStatus] = createSignal(true)
+    const [audio, controls] = createAudio(source, playing, volume)
+
     const musicDetail = createMemo(() => store.musicDetail)
     const lrcData = createMemo(() => musicDetail().lrc);
-    const audioPlayerSrc = createMemo(() => store.musicDetail.kw)
     const lyrIndex = createMemo(() => musicDetail().lyrIndex)
-    const [showClass, setShowClass] = createSignal(true)
+    const [playerShow, setPlayerShow] = createSignal(true)
+    // const toolShow = createMemo((prev) => {
+    //     if (store.musicList.length) return true
+    //     if (prev === true) return true
+    //     return false
+    // }, false)
     const [playType, setPlayType] = createSignal('order')
     const playTypeClass = createMemo(() => {
         switch (playType()) {
@@ -27,164 +36,19 @@ export default function Tool() {
                 break;
         }
     })
-    const [volume, setVolume] = createSignal(35)
-    const [oldVolume, setOldVolume] = createSignal(0)
-    const [mute, setMute] = createSignal(false)
-    const muteClass = createMemo(() => mute() ? "icon-[carbon--volume-mute]" : "icon-[carbon--volume-up]");
+
     const lyrIndexY = createMemo(() => {
         if (store.loading) return 0
         return -1 * lyrIndex() ? -1 * lyrIndex() + 1 : -1 * lyrIndex()
     });
     const [lastSecond, setLastSecond] = createSignal(0)
-    const [secondX, setSecondX] = createSignal(0)
-    const [barSatus, setBarStatus] = createSignal(true)
+    const [barWidth, setBarWidth] = createSignal(0)
     // 防止重复点击bar
     const [firstTime, setFirstTime] = createSignal(0)
 
-
-    // =============
-    // 正在拖拉
-    const [dragging, setDdragging] = createSignal(false)
-    // 是否点击按钮
-    const [isClick, setIsClick] = createSignal(false)
-    // 是否悬浮
-    const [hovering, setHovering] = createSignal(false)
-    // 开始的clientX
-    const [startX, setStartX] = createSignal(0)
-    // 开始的位置
-    const [startPosition, setStartPosition] = createSignal(0)
-    // 最新的位置=> startPosition + ((currentX-startX)/sliderSize)*100
-    const [newPosition, setNewPosition] = createSignal(0)
-    // 当前的clientX 
-    const [currentX, setCurrentX] = createSignal(0)
-    // 宽度
-    const [sliderSize, setSliderSize] = createSignal(0)
-    // size
-    const resetSize = () => setSliderSize(slider.clientWidth)
-    // 转为宽度字符串
-    const currentPosition = createMemo(() => {
-        return `${volume()}%`;
-    })
-    // =============
-    createEffect(async () => {
-
-    })
-    // 通过最小值最大值步长计算精度
-    const precision = createMemo(() => {
-        let precisions = [0, 100, 1].map(item => {
-            let decimal = ('' + item).split('.')[1];
-            return decimal ? decimal.length : 0;
-        });
-        return Math.max.apply(null, precisions);
-    })
-
-    const setPosition = (percent: number | null) => {
-        if (percent === null || isNaN(percent)) return;
-        if (percent < 0) {
-            percent = 0;
-        } else if (percent > 100) {
-            percent = 100;
-        }
-        const lengthPerStep = 1;
-        const steps = Math.round(percent / lengthPerStep);
-        let value = steps * lengthPerStep * 100 * 0.01;
-        value = parseFloat(value.toFixed(precision()));
-        audioPlayer.volume = value / 100
-        setVolume(value)
-    }
-
-    const onSliderClick = (event: any) => {
-        if (dragging()) return
-        resetSize()
-        const sliderOffsetLeft = slider.getBoundingClientRect().left;
-        setPosition((event.clientX - sliderOffsetLeft) / sliderSize() * 100);
-        volume() === 0 ? setMute(true) : setMute(false)
-    }
-
-    const handleMouseEnter = () => {
-        setHovering(true)
-    }
-    const handleMouseLeave = () => {
-        setHovering(false)
-    }
-
-    const onDragStart = (event: any) => {
-        setDdragging(true)
-        setIsClick(true)
-        if (event.type === 'touchstart') {
-            event.clientY = event.touches[0].clientY;
-            event.clientX = event.touches[0].clientX;
-        }
-        setStartX(event.clientX)
-        setStartPosition(parseFloat(currentPosition()))
-        setNewPosition(startPosition())
-    }
-
-    const onDragging = (event: any) => {
-        if (dragging()) {
-            setIsClick(false)
-            resetSize()
-            let diff = 0;
-            if (event.type === 'touchmove') {
-                event.clientY = event.touches[0].clientY;
-                event.clientX = event.touches[0].clientX;
-            }
-            setCurrentX(event.clientX)
-            diff = (currentX() - startX()) / sliderSize() * 100;
-            setNewPosition(startPosition() + diff)
-            setPosition(newPosition())
-            volume() === 0 ? setMute(true) : setMute(false)
-        }
-    }
-    const onDragEnd = () => {
-        if (dragging()) {
-            /*
-             * 防止在 mouseup 后立即触发 click，导致滑块有几率产生一小段位移
-             * 不使用 preventDefault 是因为 mouseup 和 click 没有注册在同一个 DOM 上
-             */
-            setTimeout(() => {
-                setDdragging(false)
-
-                if (!isClick()) {
-                    setPosition(newPosition())
-                    volume() === 0 ? setMute(true) : setMute(false)
-                }
-            }, 0);
-            window.removeEventListener('mousemove', onDragging);
-            window.removeEventListener('touchmove', onDragging);
-            window.removeEventListener('mouseup', onDragEnd);
-            window.removeEventListener('touchend', onDragEnd);
-            window.removeEventListener('contextmenu', onDragEnd);
-        }
-    }
-
-
-    const onButtonDown = (event: any) => {
-        event.preventDefault();
-        onDragStart(event);
-        window.addEventListener('mousemove', onDragging);
-        window.addEventListener('touchmove', onDragging);
-        window.addEventListener('mouseup', onDragEnd);
-        window.addEventListener('touchend', onDragEnd);
-        window.addEventListener('contextmenu', onDragEnd);
-    }
-
-    const setExternalPlayback = (e: any) => {
-        if (e.target.className.indexOf('hahahah') != -1) return
-        setMute(!mute())
-        if (mute()) {
-            setOldVolume(volume())
-            setVolume(0)
-        } else {
-            setVolume(oldVolume())
-        }
-        audioPlayer.volume = volume() / 100
-    }
-
-
-    const audioTime = (e: any) => {
+    audio.player.ontimeupdate = function () {
         if (store.loading) return
-        let curTime = e.target.currentTime;
+        let curTime = this.currentTime;
         const findIndex = () => {
             const index =
                 lrcData()?.findIndex((item: { time: number; }) => {
@@ -192,39 +56,34 @@ export default function Tool() {
                 }) - 1
             return index < 0 ? 0 : index
         }
-
-        if (barSatus()) setStore('currentTime', curTime)
         setStore('musicDetail', produce((current: any) => {
             current.lyrIndex = findIndex()
         }))
         curTime = Math.floor(curTime);
 
 
+
+
+        if (barStatus()) {
+            const barTime = curTime / audio.duration || 0
+            setBarWidth(Math.floor(barTime * 100))
+        }
         if (curTime !== lastSecond()) {
             setLastSecond(curTime)
-            setSecondX(Math.floor((curTime / musicDetail().duration) * 100))
+            setStore('currentTime', curTime)
         }
     }
 
-    const onPlay = () => {
-        const currentIndex = store.musicList.findIndex((i: any) => i.rid === musicDetail().rid)
-        setStore("musicId", musicDetail().rid)
-        setStore("currentIndex", currentIndex)
-        setStore("isPlay", true)
-    }
-    const onPause = () => {
-        setStore("isPlay", false)
-    }
-    const togglePlayback = () => store.isPlay ? audioPlayer.pause() : audioPlayer.play()
 
+    const togglePlay = () => setPlaying(!playing())
 
     const changeMusic = async (type: string, del?: boolean) => {
         if (!store.musicList.length || store.loading) return
-        audioPlayer.pause()
-        setSecondX(0)
-
         let musicList = store.musicList
         let currentMusicIndex = musicList.findIndex(((i: any) => i.rid == store.musicId))
+        setStore('currentTime', 0)
+
+
         if (type === 'pre') {
             let preIndex;
             if (playType() == "order") {
@@ -243,18 +102,16 @@ export default function Tool() {
             }
             setStore('currentIndex', preIndex)
             const musicDetail = musicList[preIndex]
-
-
+            setBarWidth(0)
+            setStore("musicId", musicDetail.rid)
             setStore("loading", true)
-            const { kw } = await (await fetch("/api/searchSong", {
-                method: "POST",
-                body: JSON.stringify({
-                    id: musicDetail.rid,
-                }),
-            })).json()
+
+
+            const kw = await fetchKw(musicDetail.rid)
+            setSource(kw)
+            scrollIntoView(document.querySelector(`.playlist ol li[data-rid='${musicDetail.rid}']`) as HTMLElement)
             setStore(produce((current: any) => {
                 const curDetail = Object.assign({}, musicDetail)
-                curDetail.kw = kw
                 curDetail.lyrIndex = 0
                 current.musicDetail = curDetail
             }))
@@ -262,8 +119,6 @@ export default function Tool() {
         } else if (type == "next") {
             let nextIndex;
             if (playType() == "order") {
-                console.log(musicList[currentMusicIndex]);
-
                 nextIndex = currentMusicIndex + 1 == musicList.length ? 0 : currentMusicIndex + 1;
             } else if (playType() == "single") {
                 nextIndex = currentMusicIndex;
@@ -271,7 +126,6 @@ export default function Tool() {
                 if (musicList.length == 1) {
                     nextIndex = currentMusicIndex;
                 } else {
-                    // Math.floor(Math.random()*n); 可均衡获取0到n-1的随机整数。
                     nextIndex = currentMusicIndex;
                     while (nextIndex == currentMusicIndex) {
                         nextIndex = Math.floor(Math.random() * musicList.length);
@@ -280,6 +134,7 @@ export default function Tool() {
             }
             setStore('currentIndex', nextIndex)
             const musicDetail = musicList[nextIndex]
+            setBarWidth(0)
             setStore("musicId", musicDetail.rid)
             setStore("loading", true)
 
@@ -289,65 +144,62 @@ export default function Tool() {
                 }))
             }
             const kw = await fetchKw(musicDetail.rid)
+            setSource(kw)
             setStore(produce(async (current: any) => {
                 const curDetail = Object.assign({}, musicDetail)
                 if (!('lrc' in curDetail)) {
                     const lrc = await fetchLrc(musicDetail.rid)
                     curDetail.lrc = lrc
+                    console.log(2222);
+
                 }
-                curDetail.kw = kw
                 curDetail.lyrIndex = 0
                 current.musicDetail = curDetail
+                console.log(3);
             }))
+            scrollIntoView(document.querySelector(`.playlist ol li[data-rid='${musicDetail.rid}']`) as HTMLElement)
             setStore("loading", false)
         }
 
     }
+
+    audio.player.onended = () => changeMusic('next')
+
 
     const changePlayType = () => {
         const curType = playType() === 'order' ? 'single' : playType() == 'single' ? 'random' : 'order'
         setPlayType(curType)
     }
 
-    const showPlayer = () => {
-        if (!store.musicList.length) {
-            setShowClass(true)
-            return
-        }
-        if (showClass()) {
-            document.querySelector('.player-info')?.classList.add('hide')
-            setTimeout(() => setShowClass(!showClass()), 300);
-            return
-        }
-        setShowClass(!showClass())
-    }
+    const showPlayer = (e) => document.querySelector('.player-info')?.classList.add('show')
+
 
 
     const curPlayClick = async (e: any) => {
         if (e.target.className.indexOf('deleteMusic') != -1) return
         e.preventDefault()
-        const index = e.currentTarget.dataset.index
-        if (store.currentIndex != index) {
-            setStore("loading", true)
-            audioPlayer.pause()
-            setSecondX(0)
-            setStore('currentIndex', index)
-            const musicDetail = store.musicList[index]
-            setStore('musicId', musicDetail.rid)
+        const rid = e.currentTarget.dataset.rid
 
-            const kw = await fetchKw(musicDetail.rid)
+
+        if (store.musicId != rid) {
+            setStore("loading", true)
+            setBarWidth(0)
+            setStore('musicId', rid)
+            const kw = await fetchKw(rid)
+            setSource(kw)
+            setPlaying(true)
+            const musicDetail = store.musicList.find(i => i.rid == rid)
             setStore(produce(async (current: any) => {
                 const curDetail = Object.assign({}, musicDetail)
                 if (!('lrc' in curDetail)) {
                     const lrc = await fetchLrc(musicDetail.rid)
                     curDetail.lrc = lrc
                 }
-                curDetail.kw = kw
                 curDetail.lyrIndex = 0
                 current.musicDetail = curDetail
             }))
+            scrollIntoView(e.target as HTMLElement)
             setStore("loading", false)
-
             return
         }
         setBarStatus(false)
@@ -361,20 +213,22 @@ export default function Tool() {
             const diff = Math.round((e.clientX - startX) / li.clientWidth * 100)
             const newWidth = Math.max(0, Math.min(diff + curWidth, 100))
             setStore('currentTime', (newWidth * musicDetail().duration) / 100)
+            setBarWidth(newWidth)
         }
         // bar
         const onDragEnd = (e: any) => {
             if (dragging) {
 
                 setTimeout(() => {
+                    setBarStatus(true)
                     dragging = false
                     const diff = Math.round((e.clientX - startX) / li.clientWidth * 100)
                     const newWidth = diff + curWidth
                     const lastTime = (newWidth * musicDetail().duration) / 100
                     if (lastTime === firstTime()) return
-                    audioPlayer.currentTime = (newWidth * musicDetail().duration) / 100
-                    setBarStatus(true)
-                    setSecondX(newWidth)
+                    setStore('currentTime', lastTime)
+                    controls.seek(lastTime);
+                    setBarWidth(newWidth)
                     setFirstTime(lastTime)
                 }, 0);
                 window.removeEventListener('mousemove', onDragging);
@@ -394,7 +248,7 @@ export default function Tool() {
     }
 
     const clear = () => {
-        audioPlayer.pause()
+        setPlaying(false)
         setStore(produce((current: any) => {
             current.loading = true
             current.musicList = []
@@ -424,7 +278,6 @@ export default function Tool() {
             if (musicList.length != 1) {
                 await changeMusic('next', true);
             } else {
-                audioPlayer.pause()
                 clear()
                 return
             }
@@ -435,18 +288,37 @@ export default function Tool() {
         }
     }
 
-    onMount(() => audioPlayer.volume = volume() / 100)
-    return (
-        <div id="tool" classList={{ 'playing': store.isPlay }}>
-            <div class="item player" onClick={showPlayer}>
-                <div class="icon-[carbon--music]"></div>
-                <audio ref={audioPlayer} onEnded={() => changeMusic('next')} src={audioPlayerSrc()} onTimeUpdate={audioTime} autoplay onPlay={onPlay} onPause={onPause}></audio>
-            </div>
+    const closeModel = (e, el) => {
 
-            <div class={`player-info ${(showClass() && store.musicList.length) ? 'show' : ''}`}>
-                <div class="preview">
+
+        // 没有打开 点其他关闭
+
+        if (document.querySelector('.player-info')?.classList.contains('show')) {
+            document.querySelector('.player-info')?.classList.add('hide')
+            setTimeout(() => {
+                document.querySelector('.player-info')?.classList.remove('hide')
+                document.querySelector('.player-info')?.classList.remove('show')
+            }, 300);
+        }
+
+
+    }
+
+
+    createEffect(() => {
+        console.log(audio.state);
+
+    })
+
+    return (
+        <div id="tool" classList={{ 'playing': playing(), 'cursor-pointer': true }}>
+            <div class="item player" onClick={showPlayer} style="width: 30px;height: 30px;display: flex;align-items: center;justify-content: center;">
+                <div class="icon-[carbon--music]" show="model"></div>
+            </div>
+            <div class={`player-info`}  use: ClickOutside={closeModel}>
+                <div class="preview max-[765px]:flex-col  max-[765px]:!px-[10px]">
                     <div class="cover">
-                        <div class="disc" style={{ 'animation-play-state': store.isPlay ? 'running' : 'paused' }}>
+                        <div class="disc" style={{ 'animation-play-state': playing() ? 'running' : 'paused' }}>
                             <img src={musicDetail().albumpic} />
                         </div>
                     </div>
@@ -472,22 +344,12 @@ export default function Tool() {
 
                     </div>
                 </div>
-                <div class="controller">
-
+                <div class="controller  max-[765px]:px-0" >
                     <div class={`btn1 btn ${playTypeClass()}`} onClick={changePlayType}></div>
                     <div class="icon-[carbon--skip-back-outline] btn2 btn" onClick={() => changeMusic('pre')}></div>
-                    <div class={`${store.isPlay ? 'icon-[carbon--pause-outline]' : 'icon-[carbon--play-outline]'} btn3 btn`} onClick={togglePlayback}></div>
+                    <div class={`${playing() ? 'icon-[carbon--pause-outline]' : 'icon-[carbon--play-outline]'} btn3 btn`} onClick={togglePlay}></div>
                     <div class="icon-[carbon--skip-forward-outline] btn4 btn" onClick={() => changeMusic('next')}></div>
-                    <div class='volume btn' onClick={setExternalPlayback}>
-                        <div class={`${muteClass()} btn5`}></div>
-                        <div class='track hahahah' ref={slider} onClick={onSliderClick}>
-                            <div class="bar hahahah" style={{ width: currentPosition() }}></div>
-                            <div class="el-slider__button-wrapper hahahah" style={{ left: currentPosition() }} classList={{ 'hover': hovering(), 'dragging': dragging() }}>
-                                <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} onMouseDown={onButtonDown} onTouchStart={onButtonDown} class="el-tooltip el-slider__button hahahah" onFocus={handleMouseEnter} onBlur={handleMouseLeave}
-                                    classList={{ 'hover': hovering(), 'dragging': dragging() }}></div>
-                            </div>
-                        </div>
-                    </div>
+                    <SoundBar></SoundBar>
                 </div>
                 <div class='playlist'>
                     <div class='border-b-[1px] border-[rgba(253,253,253,0.7)] h-[35px]'>
@@ -503,7 +365,7 @@ export default function Tool() {
 
                         <For each={store.musicList} fallback={<div>Loading...</div>}>
                             {(item, index) => (
-                                <li title={`${item.name} - ${item.artist}`} data-index={index()} draggable="true" class={`${store.musicId === item.rid ? 'curPlay' : ''} group`} onMouseDown={curPlayClick}>
+                                <li title={`${item.name} - ${item.artist}`} data-rid={item.rid} draggable="true" class={`${store.musicId === item.rid ? 'curPlay' : ''} group`} onMouseDown={curPlayClick}>
                                     <Show
                                         when={store.musicId === item.rid}
                                         fallback={<div class='index'>{index() + 1}</div>}
@@ -520,15 +382,14 @@ export default function Tool() {
 
 
                                     <span class="info">
-                                        {secondX()}
                                         <span class='overflow-hidden text-ellipsis whitespace-nowrap max-w-[12rem] inline-block' innerHTML={item.name}></span>
                                         <span style={{ 'display': store.musicId === item.rid ? 'none' : 'block' }} innerHTML={item.artist}></span>
                                     </span>
                                     <Show
                                         when={store.musicId === item.rid}
                                     >
-                                        <div class="progress" data-dtime={musicDetail().songTimeMinutes} data-ptime={handleMusicTime(store.currentTime)}>
-                                            <div class="bar" style={{ 'width': `${secondX()}%` }}></div>
+                                        <div class="progress" data-dtime={handleMusicTime(audio.state === 'playing' ? audio.duration : 0)} data-ptime={handleMusicTime(store.currentTime)}>
+                                            <div class="bar" style={{ 'width': `${barWidth()}%` }}></div>
                                         </div>
                                     </Show>
 

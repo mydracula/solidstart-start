@@ -4,6 +4,9 @@ import { resolve } from 'path'
 // import vercel from 'solid-start-vercel'
 
 export default defineConfig({
+  server: {
+    host: '0.0.0.0'
+  },
   plugins: [
     solid({
       inspect: false,

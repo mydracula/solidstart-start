@@ -1,7 +1,10 @@
+import { createEffect } from 'solid-js'
 import { createSignal, createMemo, createRoot } from 'solid-js'
 import { createStore, produce } from 'solid-js/store'
 
 export const [store, setStore] = createStore({
+  innerHeight: -1,
+  isMobile: false,
   loading: true,
   musicList: [],
   isPlay: false,
@@ -17,5 +20,9 @@ export const [store, setStore] = createStore({
     lrc: [],
     kw: null,
     lyrIndex: 0
-  },
+  }
 }) as any
+
+export const [source, setSource] = createSignal('')
+export const [playing, setPlaying] = createSignal(false)
+export const [volume, setVolume] = createSignal(0.35)

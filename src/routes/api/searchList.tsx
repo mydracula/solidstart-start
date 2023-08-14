@@ -68,6 +68,25 @@ export async function POST(context: APIEvent) {
     const jsonRes = JSON.parse(rawRes)
 
 
+    const getImage = (song: any) => {
+        let pic = ''
+        if (song['web_albumpic_short'] !== '') {
+            if (song['web_albumpic_short'].includes('120')) {
+                pic = `https://img4.kuwo.cn/star/albumcover/${song['web_albumpic_short'].replace('120', '300')}`;
+            } else {
+                pic = `https://img4.kuwo.cn/star/albumcover/${song['web_albumpic_short']}`;
+            }
+        } else {
+            if (song['web_artistpic_short'].includes('120')) {
+                pic = `https://img1.kuwo.cn/star/starheads/${song['web_artistpic_short'].replace('120', '300')}`;
+            } else {
+                pic = `https://img1.kuwo.cn/star/starheads/${song['web_artistpic_short']}`;
+            }
+        }
+        return pic
+    }
+
+
 
     jsonRes.list = jsonRes.abslist.map((i: any) => {
         return {
@@ -76,7 +95,7 @@ export async function POST(context: APIEvent) {
             album: i.ALBUM,
             songTimeMinutes: handleMusicTime(i.DURATION),
             duration: i.DURATION,
-            albumpic: `https://img2.kuwo.cn/star/albumcover/${i.web_albumpic_short || i.web_artistpic_short}`,
+            albumpic: getImage(i),
             rid: i.DC_TARGETID
         }
     })

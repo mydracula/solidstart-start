@@ -2,28 +2,13 @@ import { A } from '@solidjs/router';
 import Search from './Search';
 import ThemeToggle from './ThemeToggle';
 import { onMount } from 'solid-js';
+import { createEffect } from 'solid-js';
+import { store } from '~/stores/index'
 
 
 export default function Common() {
-
-
     return (
         <>
-            <A
-                href="/search/"
-                class="min-[766px]:hidden select-none cursor-pointer w-[91.467vw] h-[8.533vw] bg-[#f2f4f5] rounded-[5.333vw] box-border justify-center flex items-center mx-auto my-[5vw]"
-            >
-                <div class="w-[4.533vw] h-[4.533vw]">
-                    <img
-                        src="//h5static.kuwo.cn/www/kuwo-m/img/search@2x.a3b9c58.png"
-                    />
-                </div>
-                <div
-                    class="ml-[1.93vw] text-[1.8666vw] font-['PingFangSC-Regular'] font-[400] mt-[0.267vw] text-[#a1a4b3] text-center leading-normal"
-                >
-                    搜索你想听的歌曲
-                </div>
-            </A>
             <div
                 class="border-b-[1px] border-solid border-[#f0f0f0] max-[765px]:hidden"
             >

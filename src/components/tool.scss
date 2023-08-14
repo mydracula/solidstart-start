@@ -186,18 +186,13 @@
 .playlist ol {
   line-height: 2;
   font-size: 13px;
-  padding: 5px 0;
+  /* padding: 5px 0; */
   margin: 10px 0 0;
   height: 200px;
   overflow-x: scroll;
   counter-reset: counter;
   position: relative;
   animation: fadeIn 0.5s;
-}
-
-::-webkit-scrollbar-track {
-  border-radius: 0.3125rem;
-  background: 0 0;
 }
 
 ::-webkit-scrollbar-track-piece {
@@ -207,28 +202,6 @@
 ::-webkit-scrollbar-button {
   background: 0 0;
   height: 0;
-}
-
-::-webkit-scrollbar-thumb {
-  border-radius: 1.25rem;
-  background-clip: padding-box;
-  background-color: #eff2f3;
-  background-image: linear-gradient(
-    45deg,
-    #eff2f3 25%,
-    transparent 0,
-    transparent 50%,
-    rgba(253, 253, 253, 0.5) 0,
-    rgba(253, 253, 253, 0.5) 75%,
-    transparent 0,
-    transparent
-  );
-}
-
-.player-info ol::-webkit-scrollbar {
-  width: 0.1875rem;
-  height: 0.1875rem;
-  background: 0 0;
 }
 
 .playlist ol li {
@@ -340,7 +313,7 @@
 .player-info .volume .el-slider__button-wrapper:hover {
   cursor: grab;
 }
-.player-info .volume .el-slider__button:hover,
+.player-info .volume .el-slider__button.hover:hover,
 .player-info .volume .el-slider__button.dragging {
   transform: scale(2);
 }
@@ -458,4 +431,27 @@
   position: absolute;
   right: 0;
   padding: 0 0.3rem;
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-thumb {
+  border-radius: 20px;
+  background-color: #eff2f3;
+  background-image: linear-gradient(
+    45deg,
+    #eff2f3 25%,
+    transparent 0,
+    transparent 50%,
+    rgba(253, 253, 253, 0.5) 0,
+    rgba(253, 253, 253, 0.5) 75%,
+    transparent 0,
+    transparent
+  );
+}
+::-webkit-scrollbar-track {
+  background: 0 0;
+  border-radius: 20px;
 }
